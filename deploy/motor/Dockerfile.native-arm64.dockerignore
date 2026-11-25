@@ -1,0 +1,11 @@
+*
+!Dockerfile.native-arm64
+!upstream/
+!upstream/motor/
+!upstream/motor/coordinator/
+!upstream/motor/coordinator/workload_shm_rs/
+!upstream/motor/coordinator/workload_shm_rs/**
+!upstream/motor/kv_conductor/
+!upstream/motor/kv_conductor/**
+!workload-shm.Cargo.lock
+!kv-conductor.Cargo.lock

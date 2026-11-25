@@ -1,0 +1,24 @@
+FROM --platform=$BUILDPLATFORM docker.m.daocloud.io/library/rust:1.91.1-slim-bookworm@sha256:8514999d4786ef12efe89239e86b3d0a021b94b9d35108c8efe6c79ca7dc1a65 AS native
+WORKDIR /src
+COPY upstream/motor/coordinator/workload_shm_rs ./workload_shm_rs
+COPY upstream/motor/kv_conductor ./kv_conductor
+COPY workload-shm.Cargo.lock ./workload_shm_rs/Cargo.lock
+COPY kv-conductor.Cargo.lock ./kv_conductor/Cargo.lock
+RUN --mount=type=tmpfs,target=/cross \
+    sed -i 's|http://deb.debian.org/debian|https://mirrors.huaweicloud.com/debian|g' /etc/apt/sources.list.d/debian.sources \
+    && dpkg --add-architecture arm64 && apt-get update \
+    && apt-get install -y --download-only --no-install-recommends libzmq3-dev:arm64 pkg-config gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
+    && for package in /var/cache/apt/archives/*.deb; do dpkg-deb -x "$package" /cross; done \
+    && RUSTUP_DIST_SERVER=https://rsproxy.cn rustup target add aarch64-unknown-linux-gnu \
+    && export PATH=/cross/usr/bin:$PATH LD_LIBRARY_PATH=/cross/usr/lib/x86_64-linux-gnu:/cross/lib/x86_64-linux-gnu \
+    && export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+       CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++ \
+       PKG_CONFIG_ALLOW_CROSS=1 PKG_CONFIG_LIBDIR=/cross/usr/lib/aarch64-linux-gnu/pkgconfig PKG_CONFIG_SYSROOT_DIR=/cross \
+       CFLAGS_aarch64_unknown_linux_gnu=--sysroot=/cross CXXFLAGS_aarch64_unknown_linux_gnu=--sysroot=/cross \
+       RUSTFLAGS=-Clink-arg=--sysroot=/cross \
+    && cargo build -j 4 --locked --release --target aarch64-unknown-linux-gnu --manifest-path workload_shm_rs/Cargo.toml \
+    && cargo build -j 4 --locked --release --target aarch64-unknown-linux-gnu --manifest-path kv_conductor/Cargo.toml \
+    && mkdir /out && cp workload_shm_rs/target/aarch64-unknown-linux-gnu/release/libmindie_workload_shm.so /out/ \
+    && cp kv_conductor/target/aarch64-unknown-linux-gnu/release/kv-conductor /out/
+FROM scratch
+COPY --from=native /out /out

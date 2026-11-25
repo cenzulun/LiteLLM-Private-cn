@@ -1,0 +1,11 @@
+*
+!Dockerfile.runtime
+!realai_private/
+!realai_private/*.py
+!realai_private/motor/
+!realai_private/motor/*.py
+!sitecustomize.py
+!patch_runtime.py
+!metadata-zh.json
+!ui-out/
+!ui-out/**

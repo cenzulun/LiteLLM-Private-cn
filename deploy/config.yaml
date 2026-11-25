@@ -1,0 +1,40 @@
+model_list: []
+
+litellm_settings:
+  callbacks: [prometheus]
+  success_callback: []
+  failure_callback: []
+  turn_off_message_logging: true
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL
+  store_model_in_db: true
+  store_prompts_in_spend_logs: false
+  maximum_spend_logs_retention_period: 30d
+  trusted_proxy_ranges: []
+  hide_default_credentials_hint: true
+  coordination_redis:
+    host: os.environ/REDIS_HOST
+    port: os.environ/REDIS_PORT
+    db: os.environ/REDIS_DB
+    ssl: os.environ/REDIS_SSL
+    password: os.environ/REDIS_PASSWORD
+    username: os.environ/REDIS_USERNAME
+
+router_settings:
+  routing_strategy: latency-based-routing
+  routing_strategy_args:
+    lowest_latency_buffer: 0.15
+    max_latency_list_size: 20
+    ttft_percentile: 0.95
+  redis_url: os.environ/REDIS_URL
+  num_retries: 1
+  timeout: 180
+  allowed_fails: 3
+  cooldown_time: 30
+  max_fallbacks: 2
+  enable_weighted_failover: true
+  enable_health_check_routing: true
+  health_check_staleness_threshold: 120
+  fallbacks: []

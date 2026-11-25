@@ -1,0 +1,100 @@
+groups:
+  - name: realai-routing
+    rules:
+      - alert: 路由实例调用失败率过高
+        expr: (sum(increase(realai_route_completed_total{outcome="failure"}[5m])) by (model,deployment) / clamp_min(sum(increase(realai_route_completed_total[5m])) by (model,deployment), 1)) > 0.05 and sum(increase(realai_route_completed_total[5m])) by (model,deployment) >= 20
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: 模型实例调用失败率持续偏高
+          description: "模型 {{ $labels.model }} 的实例 {{ $labels.deployment }} 最近五分钟失败率超过百分之五，且完成调用不少于二十次。"
+      - alert: 备用模型调用失败
+        expr: sum(increase(realai_route_fallbacks_total{outcome="failure"}[5m])) by (requested_model,model,deployment) >= 3
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 备用模型持续调用失败
+          description: "模型 {{ $labels.requested_model }} 的备用模型 {{ $labels.model }} 最近五分钟至少三次调用失败。请检查备用链和上游状态。"
+      - alert: 路由调用时延过高
+        expr: histogram_quantile(0.95,sum(rate(realai_route_duration_seconds_bucket[5m])) by (le,model,deployment)) > 60 and sum(increase(realai_route_duration_seconds_count[5m])) by (model,deployment) >= 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 模型实例调用时延持续偏高
+          description: "模型 {{ $labels.model }} 的实例 {{ $labels.deployment }} 调用时延第九十五百分位超过六十秒，请结合输出长度与排队趋势判断。"
+  - name: realai-inference
+    rules:
+      - alert: 推理服务指标采集失败
+        expr: up{job="vllm-ascend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: 推理服务不可达或指标采集失败
+          description: "实例 {{ $labels.instance }} 连续两分钟无法采集。请检查服务存活、端口、网络与采集鉴权。"
+
+      - alert: 网关指标采集失败
+        expr: up{job="realai-gateway"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: 网关不可达或指标采集失败
+          description: "实例 {{ $labels.instance }} 连续两分钟无法采集，请检查服务与采集鉴权。"
+
+      - alert: 模型请求失败率过高
+        expr: (sum(rate(litellm_proxy_failed_requests_metric_total[5m])) by (model) / clamp_min(sum(rate(litellm_proxy_total_requests_metric_total[5m])) by (model), 0.001)) > 0.05 and sum(increase(litellm_proxy_total_requests_metric_total[5m])) by (model) >= 20
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 模型网关调用失败率持续高于百分之五
+          description: "模型 {{ $labels.model }} 最近五分钟至少有二十次调用，且网关失败率超过百分之五。"
+
+      - alert: 模型服务排队过长
+        expr: sum(vllm:num_requests_waiting) by (model_name, instance) > 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 模型服务排队请求持续偏高
+          description: "模型 {{ $labels.model_name }} 在 {{ $labels.instance }} 的等待请求超过 20。"
+
+      - alert: 模型服务首令牌时延过高
+        expr: histogram_quantile(0.95, sum(rate(vllm:time_to_first_token_seconds_bucket[5m])) by (le, model_name, instance)) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 模型首令牌时延持续偏高
+          description: "模型 {{ $labels.model_name }} 在 {{ $labels.instance }} 的百分之九十五分位首令牌时延超过 5 秒。"
+
+      - alert: 昇腾显存占用过高
+        expr: 100 * npu_chip_info_hbm_used_memory / (npu_chip_info_hbm_total_memory > 0) > 95
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 昇腾高带宽显存占用过高
+          description: "设备 {{ $labels.instance }} 的高带宽显存占用超过百分之九十五。"
+
+      - alert: 昇腾芯片温度过高
+        expr: npu_chip_info_temperature > 85
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: 昇腾芯片温度持续高于八十五摄氏度
+          description: "设备 {{ $labels.instance }} 温度偏高，请检查散热和现场设备建议阈值。"
+
+      - alert: 昇腾芯片健康异常
+        expr: npu_chip_info_health_status != 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 昇腾芯片健康状态异常
+          description: "设备 {{ $labels.instance }} 健康码异常。本规则按正常码为一编写，接入前须核对实际导出器定义。"

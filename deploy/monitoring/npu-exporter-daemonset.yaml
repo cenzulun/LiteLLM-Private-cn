@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: npu-exporter
+  namespace: monitoring
+  labels:
+    app: npu-exporter
+spec:
+  selector:
+    matchLabels:
+      app: npu-exporter
+  template:
+    metadata:
+      labels:
+        app: npu-exporter
+    spec:
+      hostNetwork: true
+      hostPID: true
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: npu-exporter
+          image: <内网镜像仓库>/npu-exporter:<版本>
+          imagePullPolicy: IfNotPresent
+          args: ["--port", "8088"]
+          ports:
+            - name: metrics
+              containerPort: 8088
+              protocol: TCP
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: dev
+              mountPath: /dev
+            - name: driver
+              mountPath: /usr/local/Ascend
+              readOnly: true
+            - name: run
+              mountPath: /var/run
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            periodSeconds: 15
+      volumes:
+        - name: dev
+          hostPath:
+            path: /dev
+        - name: driver
+          hostPath:
+            path: /usr/local/Ascend
+        - name: run
+          hostPath:
+            path: /var/run
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: npu-exporter
+  namespace: monitoring
+  labels:
+    app: npu-exporter
+spec:
+  selector:
+    app: npu-exporter
+  ports:
+    - name: metrics
+      port: 8088
+      targetPort: metrics

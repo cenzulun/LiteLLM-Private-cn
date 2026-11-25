@@ -1,0 +1,71 @@
+# AI大模型智能网关平台
+
+基于 LiteLLM 定制的中文内网模型网关。当前源码版本为 1.0.12，提供模型接入、调用密钥、团队与权限、令牌用量、路由与熔断、推理监控、昇腾资源监控和独立推理调度页面。
+
+模型通过标准兼容协议连接，模型名称、接口路径与配置标识保持原值。生产模型地址、账号密码和数据库连接由部署方配置，仓库不包含现场信息。
+
+## 目录
+
+| 目录 | 内容 |
+| --- | --- |
+| `sources/litellm-1.110.1/ui/litellm-dashboard` | 完整定制前端及依赖锁文件 |
+| `sources/litellm-1.110.1/litellm` | 本地保留的上游后端参考文件，不是完整 Python 安装包 |
+| `deploy/realai_private` | 实际运行的后端扩展与路由、监控、调度接口 |
+| `deploy` | Compose、空模型配置、环境模板和初始化脚本 |
+| `deploy/monitoring` | 指标采集和告警规则示例 |
+| `deploy/tests` | 针对性功能与集成验证 |
+| `deploy/motor` | 可选调度服务控制代码与 ARM64 构建配方 |
+| `scripts` | 从当前源码构建镜像的入口 |
+| `build-tools` | 本地发布打包与验证辅助脚本 |
+
+## 获取源码
+
+```sh
+git clone --recurse-submodules https://github.com/cenzulun/LiteLLM-Private-cn.git
+cd LiteLLM-Private-cn
+```
+
+调度器上游使用子模块固定到提交 `96846215cf4f05aaf44068e1784f25d64c18e845`。不使用调度器构建时可暂不下载该子模块。
+
+## 构建网关
+
+需要 Python 3、Node.js 24.19.0、npm、Docker 和 Buildx。运行以下命令构建当前前端和网关扩展。
+
+```sh
+python scripts/build_gateway.py --platform linux/arm64
+```
+
+本地 AMD64 验证使用 `--platform linux/amd64`。基础运行镜像默认固定到 `deploy/Dockerfile.runtime` 中的上游摘要，也可使用 `--base-image` 指定已导入且与目标架构匹配的基础镜像。构建需要已准备的依赖或网络，不代表可在无依赖环境中离线重建。
+
+构建调度服务的 ARM64 镜像前，先初始化子模块，再执行以下命令。
+
+```sh
+docker buildx build --platform linux/arm64 -f deploy/motor/Dockerfile.native-arm64 -t realai/motor-native:3.2.0-arm64 --load deploy/motor
+docker buildx build --platform linux/arm64 -f deploy/motor/Dockerfile.arm64 -t realai/motor:3.2.0-runtime-arm64 --load deploy/motor
+```
+
+## 配置与运行
+
+默认 Compose 启动网关和调度服务，PostgreSQL 与 Redis 使用现有内网服务。已有离线镜像包应先在部署机导入，仓库本身不包含镜像归档。
+
+```sh
+cd deploy
+python3 init_env.py --database-url 'postgresql://用户名:密码@数据库地址:5432/数据库名' --redis-host '缓存地址' --bind-address '内网网卡地址'
+docker compose up -d --pull never
+```
+
+管理员密码保存在生成的 `.env` 中，登录入口为 `http://部署地址:4100/ui/login/`。模型列表默认为空，登录后填写实际模型地址。Prometheus 可稍后在页面中配置。请使用生产环境专用数据库和凭据。
+
+`start.sh` 适用于 ARM64 离线包，需要同时提供离线镜像文件；从源码构建并加载镜像后可直接运行 Compose。
+
+## 升级与验证状态
+
+保留原 `.env`、加密盐值、数据库、Compose 项目名及持久化卷，仅更新镜像。不要重新初始化已有部署，不要执行 `docker compose down -v`。单网关更新存在短暂中断。
+
+1.0.12 已完成本地 AMD64 页面、针对性测试及标准协议普通和流式调用验证。ARM64 镜像架构与归档已校验，交付时的 ARM64 仿真启动尚未完成验收。目标 openEuler 主机、实际推理引擎、监控与故障切换仍需现场验证。
+
+会话亲和底层可用，当前默认配置和在线路由页面尚未启用。讨论过的后续增强不应视为本版本已交付功能。详见 [表单填写与升级说明](build-tools/表单填写说明-1.0.12.md)。历史设计文档描述阶段性状态，以当前源码和本段验证范围为准。
+
+## 许可证
+
+本项目包含不同许可证范围的上游文件。请阅读 [第三方许可说明](THIRD_PARTY_NOTICES.md)。许可证原文与必要版权声明保留，企业功能继续受其原有授权条件约束。

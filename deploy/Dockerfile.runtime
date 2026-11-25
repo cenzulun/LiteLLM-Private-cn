@@ -1,0 +1,15 @@
+ARG BASE_IMAGE=ghcr.io/berriai/litellm-database@sha256:7dfda5a5b70074800f80140b04a5181579a3fe5b1bb8ddbc47c1de813fd5127c
+FROM ${BASE_IMAGE}
+ENV PYTHONPATH=/app \
+    LITELLM_OFFLINE_MODE=true \
+    LITELLM_LOCAL_MODEL_COST_MAP=True \
+    REALAI_PRIVATE_NETWORK_ONLY=false \
+    LITELLM_HIDE_DEFAULT_CREDENTIALS_HINT=true \
+    LITELLM_DISABLE_LATEST_RELEASE_CHECK=true \
+    NEXT_TELEMETRY_DISABLED=1
+COPY realai_private /app/realai_private
+COPY sitecustomize.py /app/sitecustomize.py
+COPY patch_runtime.py /app/patch_runtime.py
+COPY metadata-zh.json /app/realai_private/metadata-zh.json
+COPY ui-out /app/ui-out
+RUN python /app/patch_runtime.py

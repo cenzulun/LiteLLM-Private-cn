@@ -1,0 +1,25 @@
+ARG NATIVE_IMAGE=realai/motor-native:3.2.0-arm64
+FROM ${NATIVE_IMAGE} AS native
+
+FROM docker.m.daocloud.io/library/python:3.12-slim@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd AS package
+RUN sed -i 's|http://deb.debian.org/debian|https://mirrors.huaweicloud.com/debian|g' /etc/apt/sources.list.d/debian.sources && apt-get -o Acquire::https::Timeout=20 update && apt-get install -y --no-install-recommends libzmq5 libgomp1 && rm -rf /var/lib/apt/lists/*
+COPY requirements.amd64.lock /tmp/requirements.lock
+RUN sed '/^motor @ /d' /tmp/requirements.lock > /tmp/dependencies.lock && python -m pip install --no-cache-dir -r /tmp/dependencies.lock
+WORKDIR /opt/motor
+COPY upstream ./
+COPY --from=native /out/libmindie_workload_shm.so ./motor/coordinator/workload_shm_rs/lib/libmindie_workload_shm.so
+COPY --from=native /out/kv-conductor ./motor/kv_conductor/bin/kv-conductor
+RUN SKIP_RUST_BUILD=1 SKIP_RUST_INSTALL=1 bash build.sh && python -m pip install --no-deps dist/motor-*.whl
+RUN python -c "import glob,zipfile,struct; p=glob.glob('dist/*.whl'); assert len(p)==1 and 'aarch64' in p[0]; z=zipfile.ZipFile(p[0]); paths=['motor/coordinator/workload_shm_rs/lib/libmindie_workload_shm.so','motor/kv_conductor/bin/kv-conductor']; [(lambda b: (b[:4]==b'\x7fELF' and struct.unpack('<H',b[18:20])[0]==183) or (_ for _ in ()).throw(AssertionError('non-ARM64 native component')))(z.read(n)) for n in paths]"
+
+FROM docker.m.daocloud.io/library/python:3.12-slim@sha256:c61cffc3bacb94ed026ff8b45d5114b7693dd0420baca0a1ace0e3d0ce9035fd
+RUN sed -i 's|http://deb.debian.org/debian|https://mirrors.huaweicloud.com/debian|g' /etc/apt/sources.list.d/debian.sources && apt-get -o Acquire::https::Timeout=20 update && apt-get install -y --no-install-recommends libzmq5 libgomp1 && rm -rf /var/lib/apt/lists/*
+COPY --from=package /usr/local /usr/local
+COPY --from=package /opt/motor/dist /opt/provenance/dist
+COPY --from=package /tmp/dependencies.lock /opt/provenance/requirements.arm64.lock
+COPY initialize.py supervisor.py healthcheck.py /opt/control/
+LABEL org.opencontainers.image.revision="96846215cf4f05aaf44068e1784f25d64c18e845"
+WORKDIR /run/motor
+ENV USER_CONFIG_PATH=/etc/motor/coordinator.json MOTOR_RUNTIME_DIR=/etc/motor MOTOR_LOG_PATH=/var/log/motor PYTHONUNBUFFERED=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+HEALTHCHECK --interval=20s --timeout=10s --start-period=180s --retries=10 CMD ["python", "/opt/control/healthcheck.py"]
+CMD ["sh", "-c", "python /opt/control/initialize.py && exec python /opt/control/supervisor.py"]

@@ -1,0 +1,10 @@
+upstream/.git
+upstream/.agents
+upstream/tests
+upstream/docs
+upstream/.motor-local
+upstream/**/target
+runtime
+evidence
+*.tar
+*.log
