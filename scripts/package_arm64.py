@@ -1,5 +1,6 @@
 """Export fresh runtime sources and both ARM64 images without site credentials."""
 from pathlib import Path
+import argparse
 import hashlib
 import json
 import os
@@ -8,6 +9,11 @@ import subprocess
 import tarfile
 
 ROOT = Path(__file__).resolve().parents[1]
+parser = argparse.ArgumentParser(description='导出完整 ARM64 离线部署包')
+parser.add_argument('--output-dir', type=Path, default=ROOT / 'deploy', help='交付文件输出目录')
+args = parser.parse_args()
+OUTPUT_ROOT = args.output_dir.resolve()
+OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
 VERSION = (ROOT / 'VERSION').read_text(encoding='utf8').strip()
 validation_path = ROOT / f'build-tools/release-validation-{VERSION}.json'
 release_validation = None
@@ -26,7 +32,7 @@ else:
         evidence = json.loads((ROOT / 'build-tools' / name).read_text(encoding='utf8'))
         assert all(evidence.get(key) is True for key in ['background_sampling', 'runtime_source_matches',
             'served_ui_matches', 'healthy', 'restart_persistence_verified', 'failed_scrape_not_fresh', 'active_alert']), name
-OUT = ROOT / f'deploy/release-{VERSION}-arm64'
+OUT = OUTPUT_ROOT / f'release-{VERSION}-arm64'
 CONTEXT = ROOT / f'build-tools/runtime-context-{VERSION}'
 OUT.mkdir(exist_ok=True)
 TAGS = [f'realai/gateway:{VERSION}-arm64', 'realai/motor:3.2.0-runtime-arm64']
@@ -117,7 +123,8 @@ for pattern in ['test-direct-monitor-validated.log', 'test-direct-routing.log', 
                 f'live-direct-arm64-{VERSION}.json', 'lint-monitor-layout-final.log', 'test-monitor-layout.log']:
     for source in (ROOT / 'build-tools').glob(pattern):
         copy(source, verification / source.name)
-for pattern in [f'release-validation-{VERSION}.json', f'test-monitor-scope-{VERSION}.log', f'lint-monitor-scope-{VERSION}.log']:
+for pattern in [f'release-validation-{VERSION}.json', f'test-monitor-scope-{VERSION}.log', f'lint-monitor-scope-{VERSION}.log',
+                f'test-resource-toolbar-{VERSION}.log', f'lint-resource-toolbar-{VERSION}.log']:
     for source in (ROOT / 'build-tools').glob(pattern):
         copy(source, verification / source.name)
 screenshots = ROOT / f'.impeccable/review/direct-{VERSION}'
@@ -158,7 +165,7 @@ with (OUT / 'SHA256SUMS').open('w', encoding='utf8', newline='\n') as stream:
         with path.open('rb') as handle:
             digest = hashlib.file_digest(handle, 'sha256').hexdigest()
         stream.write(f'{digest}  {path.relative_to(OUT).as_posix()}\n')
-package = ROOT / f'deploy/AI大模型智能网关平台-{VERSION}-完整ARM64部署包.tar'
+package = OUTPUT_ROOT / f'AI大模型智能网关平台-{VERSION}-完整ARM64部署包.tar'
 pending = package.with_suffix('.tar.pending')
 with tarfile.open(pending, 'w') as archive:
     archive.add(OUT, arcname='AI大模型智能网关平台')

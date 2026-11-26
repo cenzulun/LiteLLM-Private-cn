@@ -4,8 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
 import { getProxyBaseUrl } from "@/components/networking";
 import { Page } from "@/components/shared/Page";
-import { PageHeader, PageHeaderDescription, PageHeaderTitle } from "@/components/shared/PageHeader";
-import { Button } from "@/components/ui/button";
 import { createApiClient } from "@/lib/http/client";
 import LoadingScreen from "@/components/common_components/LoadingScreen";
 import MetricHistory from "@/components/MetricHistory";
@@ -111,18 +109,13 @@ export default function ResourceMonitor() {
   const metrics = query.data?.metrics.filter((metric) => keys.has(metric.key)) ?? [];
   return (
     <Page>
-      <PageHeader>
-        <div className="flex items-center justify-between gap-4">
-          <PageHeaderTitle>引擎与昇腾资源</PageHeaderTitle>
-          <Button variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()}>
-            {query.isFetching ? "正在刷新…" : "刷新"}
-          </Button>
-        </div>
-        <PageHeaderDescription>
-          查看 vLLM-Ascend 排队、运行、缓存和吞吐，以及昇腾设备资源。支持源采集和已有 Prometheus。
-        </PageHeaderDescription>
-      </PageHeader>
-      <MonitorConfiguration accessToken={accessToken} userRole={userRole} />
+      <MonitorConfiguration
+        accessToken={accessToken}
+        userRole={userRole}
+        title="引擎与昇腾资源"
+        onRefresh={() => void query.refetch()}
+        refreshing={query.isFetching}
+      />
       <DirectMetricsPanel accessToken={accessToken} />
       {(() => {
         if (query.isPending) {

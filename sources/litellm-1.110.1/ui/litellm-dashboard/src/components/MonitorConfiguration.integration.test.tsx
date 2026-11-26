@@ -26,7 +26,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("监控配置", () => {
-  it("未传入页面标题时保留独立配置区，不接管资源页标题与刷新", () => {
+  it("独立配置模式保留配置区且不生成刷新按钮", () => {
     renderWithProviders(<MonitorConfiguration accessToken="test-only" userRole="Admin" />);
     expect(screen.getByRole("heading", { name: "源采集配置" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "Prometheus 接入配置" })).toBeVisible();
