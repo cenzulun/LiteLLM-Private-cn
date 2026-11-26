@@ -4,11 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
 import { getProxyBaseUrl } from "@/components/networking";
 import { Page } from "@/components/shared/Page";
+import { PageHeader, PageHeaderDescription, PageHeaderTitle } from "@/components/shared/PageHeader";
+import { Button } from "@/components/ui/button";
 import { createApiClient } from "@/lib/http/client";
 import LoadingScreen from "@/components/common_components/LoadingScreen";
 import MetricHistory from "@/components/MetricHistory";
-import MonitorConfiguration from "@/components/MonitorConfiguration";
 import DirectMetricsPanel from "@/components/direct_monitor/DirectMetricsPanel";
+import MonitorConfiguration from "@/components/MonitorConfiguration";
 type Metric = {
   key: string;
   label: string;
@@ -106,19 +108,21 @@ export default function ResourceMonitor() {
     refetchInterval: 15000,
   });
   if (isLoading || !isAuthorized) return <LoadingScreen />;
-  const metrics =
-    query.data?.metrics.filter(
-      (metric) => keys.has(metric.key) && metric.series.some((series) => Number.isFinite(Number(series.value[1]))),
-    ) ?? [];
+  const metrics = query.data?.metrics.filter((metric) => keys.has(metric.key)) ?? [];
   return (
     <Page>
-      <MonitorConfiguration
-        accessToken={accessToken}
-        userRole={userRole}
-        title="引擎与昇腾资源"
-        onRefresh={() => void query.refetch()}
-        refreshing={query.isFetching}
-      />
+      <PageHeader>
+        <div className="flex items-center justify-between gap-4">
+          <PageHeaderTitle>引擎与昇腾资源</PageHeaderTitle>
+          <Button variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()}>
+            {query.isFetching ? "正在刷新…" : "刷新"}
+          </Button>
+        </div>
+        <PageHeaderDescription>
+          查看 vLLM-Ascend 排队、运行、缓存和吞吐，以及昇腾设备资源。支持源采集和已有 Prometheus。
+        </PageHeaderDescription>
+      </PageHeader>
+      <MonitorConfiguration accessToken={accessToken} userRole={userRole} />
       <DirectMetricsPanel accessToken={accessToken} />
       {(() => {
         if (query.isPending) {
@@ -131,60 +135,56 @@ export default function ResourceMonitor() {
             </div>
           );
         }
-        if (query.data?.state === "unconfigured") {
-          return null;
-        }
         return (
           <>
-            {query.data?.state === "unavailable" && (
-              <p role="alert" className="text-sm text-destructive">
-                监控源连接异常，请打开“配置监控源”检查地址与网络。
-              </p>
-            )}
-            {metrics.length > 0 && (
-              <section className="mt-5 overflow-x-auto rounded-xl border">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="p-3">指标</th>
-                      <th className="p-3">模型、节点与设备</th>
-                      <th className="p-3">当前值</th>
-                      <th className="p-3">单位</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {metrics.length ? (
-                      metrics.flatMap((metric) =>
-                        metric.series.length ? (
-                          metric.series.map((series, index) => (
-                            <tr className="border-t" key={`${metric.key}-${index}`}>
-                              <td className="p-3">{metric.label}</td>
-                              <td className="p-3 break-all">{identity(series.metric)}</td>
-                              <td className="p-3 tabular-nums">{format(series.value[1])}</td>
-                              <td className="p-3">{metric.unit}</td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr className="border-t" key={metric.key}>
+            <section className="rounded-xl border p-5">
+              <h2 className="font-semibold">监控源状态</h2>
+              <p className="mt-2 text-sm text-muted-foreground">{query.data?.message}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{query.data?.device_state}</p>
+            </section>
+            <section className="mt-5 overflow-x-auto rounded-xl border">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="p-3">指标</th>
+                    <th className="p-3">模型、节点与设备</th>
+                    <th className="p-3">当前值</th>
+                    <th className="p-3">单位</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {metrics.length ? (
+                    metrics.flatMap((metric) =>
+                      metric.series.length ? (
+                        metric.series.map((series, index) => (
+                          <tr className="border-t" key={`${metric.key}-${index}`}>
                             <td className="p-3">{metric.label}</td>
-                            <td className="p-3" colSpan={3}>
-                              {metric.error ?? "暂无数据，请确认已采集对应指标"}
-                            </td>
+                            <td className="p-3 break-all">{identity(series.metric)}</td>
+                            <td className="p-3 tabular-nums">{format(series.value[1])}</td>
+                            <td className="p-3">{metric.unit}</td>
                           </tr>
-                        ),
-                      )
-                    ) : (
-                      <tr>
-                        <td className="p-5 text-muted-foreground" colSpan={4}>
-                          尚未接入 Prometheus 资源指标。可配置已有 Prometheus，或在上方源采集面板查看实例指标。
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </section>
-            )}
+                        ))
+                      ) : (
+                        <tr className="border-t" key={metric.key}>
+                          <td className="p-3">{metric.label}</td>
+                          <td className="p-3" colSpan={3}>
+                            {metric.error ?? "暂无数据，请确认已采集对应指标"}
+                          </td>
+                        </tr>
+                      ),
+                    )
+                  ) : (
+                    <tr>
+                      <td className="p-5 text-muted-foreground" colSpan={4}>
+                        尚未接入资源指标。请在 Prometheus 中配置 vLLM-Ascend 和昇腾设备导出器。
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </section>
             <MetricHistory
+              showWhenEmpty
               accessToken={accessToken}
               options={[
                 {

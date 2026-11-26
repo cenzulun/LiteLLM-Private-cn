@@ -134,17 +134,28 @@ export default function MonitorConfiguration({
   };
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3" aria-label="监控操作栏">
+      {!title && <DirectConfiguration accessToken={accessToken} userRole={userRole} />}
+      <div
+        className={
+          title
+            ? "flex flex-wrap items-center justify-between gap-3"
+            : "flex flex-wrap items-center justify-between gap-3 rounded-xl border p-5"
+        }
+        aria-label="监控操作栏"
+      >
         {title && <PageHeaderTitle>{title}</PageHeaderTitle>}
+        {!title && <h2 className="font-semibold">Prometheus 接入配置</h2>}
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            aria-expanded={sourceOpen}
-            aria-controls="source-configuration-panel"
-            onClick={() => setSourceOpen(!sourceOpen)}
-          >
-            {sourceOpen ? "收起源采集" : "配置源采集"}
-          </Button>
+          {title && (
+            <Button
+              variant="outline"
+              aria-expanded={sourceOpen}
+              aria-controls="source-configuration-panel"
+              onClick={() => setSourceOpen(!sourceOpen)}
+            >
+              {sourceOpen ? "收起源采集" : "配置源采集"}
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => setOpen(!open)}
@@ -170,9 +181,11 @@ export default function MonitorConfiguration({
           )}
         </div>
       </div>
-      <div id="source-configuration-panel" hidden={!sourceOpen}>
-        <DirectConfiguration accessToken={accessToken} userRole={userRole} externalOpen={sourceOpen} />
-      </div>
+      {title && (
+        <div id="source-configuration-panel" hidden={!sourceOpen}>
+          <DirectConfiguration accessToken={accessToken} userRole={userRole} externalOpen={sourceOpen} />
+        </div>
+      )}
       {open && (
         <section className="rounded-xl border p-5" aria-label="监控接入配置">
           <h2 className="font-semibold">Prometheus 接入配置</h2>

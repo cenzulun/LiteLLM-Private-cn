@@ -121,8 +121,20 @@ describe("源采集监控", () => {
     expect((await screen.findAllByText("采集正常")).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/当前窗口无新增样本或正在预热/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("0").length).toBeGreaterThan(0);
-    expect(screen.queryByRole("heading", { name: "源采集活动告警" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "源采集活动告警" })).toBeVisible();
+    expect(screen.getByLabelText("趋势指标")).toBeVisible();
+    expect(screen.getByText("当前时间范围暂无有效趋势数据。")).toBeVisible();
+    expect(screen.getAllByText("首令牌时延（九十五分位）").length).toBeGreaterThan(1);
     expect(screen.queryByRole("img", { name: "源采集指标趋势" })).not.toBeInTheDocument();
     expect(screen.getByText(/此面板不会与 Prometheus 数值相加/)).toBeInTheDocument();
+  });
+  it("尚未配置源采集时保留面板和接入提示", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ sources: [], alerts: [], collector_error: null })),
+    );
+    renderWithProviders(<DirectMetricsPanel accessToken="test-only" />);
+    expect(await screen.findByText(/尚未配置采集源/)).toBeVisible();
+    expect(screen.getByRole("heading", { name: "源采集监控" })).toBeVisible();
   });
 });

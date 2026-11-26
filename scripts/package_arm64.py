@@ -9,10 +9,23 @@ import tarfile
 
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = (ROOT / 'VERSION').read_text(encoding='utf8').strip()
-for name in [f'live-direct-{VERSION}.json', f'live-direct-arm64-{VERSION}.json']:
-    evidence = json.loads((ROOT / 'build-tools' / name).read_text(encoding='utf8'))
-    assert all(evidence.get(key) is True for key in ['background_sampling', 'runtime_source_matches',
-        'served_ui_matches', 'healthy', 'restart_persistence_verified', 'failed_scrape_not_fresh', 'active_alert']), name
+validation_path = ROOT / f'build-tools/release-validation-{VERSION}.json'
+release_validation = None
+if validation_path.exists():
+    release_validation = json.loads(validation_path.read_text(encoding='utf8'))
+    assert release_validation['version'] == VERSION
+    for arch in ['amd64', 'arm64']:
+        assert release_validation[arch]['runtime_source_matches'] is True
+        assert release_validation[arch]['served_ui_matches'] is True
+        assert release_validation[arch]['architecture'] == arch
+    assert release_validation['amd64']['healthy'] is True
+    assert release_validation['backend_unchanged_from_verified_version']
+    assert release_validation['description']
+else:
+    for name in [f'live-direct-{VERSION}.json', f'live-direct-arm64-{VERSION}.json']:
+        evidence = json.loads((ROOT / 'build-tools' / name).read_text(encoding='utf8'))
+        assert all(evidence.get(key) is True for key in ['background_sampling', 'runtime_source_matches',
+            'served_ui_matches', 'healthy', 'restart_persistence_verified', 'failed_scrape_not_fresh', 'active_alert']), name
 OUT = ROOT / f'deploy/release-{VERSION}-arm64'
 CONTEXT = ROOT / f'build-tools/runtime-context-{VERSION}'
 OUT.mkdir(exist_ok=True)
@@ -104,6 +117,9 @@ for pattern in ['test-direct-monitor-validated.log', 'test-direct-routing.log', 
                 f'live-direct-arm64-{VERSION}.json', 'lint-monitor-layout-final.log', 'test-monitor-layout.log']:
     for source in (ROOT / 'build-tools').glob(pattern):
         copy(source, verification / source.name)
+for pattern in [f'release-validation-{VERSION}.json', f'test-monitor-scope-{VERSION}.log', f'lint-monitor-scope-{VERSION}.log']:
+    for source in (ROOT / 'build-tools').glob(pattern):
+        copy(source, verification / source.name)
 screenshots = ROOT / f'.impeccable/review/direct-{VERSION}'
 if screenshots.exists():
     copy(screenshots, verification / 'screenshots')
@@ -112,6 +128,8 @@ details = {}
 for tag in TAGS:
     row = json.loads(subprocess.check_output(['docker', 'image', 'inspect', tag]))[0]
     assert row['Architecture'] == 'arm64', tag
+    if release_validation and tag.startswith('realai/gateway:'):
+        assert release_validation['arm64']['image_id'] == row['Id']
     details[tag] = row
     images.append({'tag': tag, 'architecture': 'arm64', 'id': row['Id']})
 image_path = OUT / 'all-images-arm64.tar'
@@ -131,7 +149,7 @@ with tarfile.open(image_path) as archive:
         expected['config_sha256'] = 'sha256:' + hashlib.sha256(raw).hexdigest()
 (OUT / '版本清单.json').write_text(json.dumps({'product': 'AI大模型智能网关平台', 'version': VERSION,
     'status': '内网验收候选', 'images': images, 'production_credentials_included': False,
-    'validation': '本地 AMD64 构建、接口与页面验证；ARM64 仿真容器启动与接口验证。尚未在目标 openEuler ARM64 主机或生产推理引擎上验收。',
+    'validation': release_validation['description'] if release_validation else '本地 AMD64 构建、接口与页面验证；ARM64 仿真容器启动与接口验证。尚未在目标 openEuler ARM64 主机或生产推理引擎上验收。',
     'external_dependencies': ['PostgreSQL', 'Redis', '推理引擎'], 'optional_dependencies': ['Prometheus', '昇腾设备指标导出器']}, ensure_ascii=False, indent=2), encoding='utf8')
 files = sorted(path for path in OUT.rglob('*') if path.is_file() and path.name != 'SHA256SUMS')
 assert not any(path.name == '.env' for path in files)

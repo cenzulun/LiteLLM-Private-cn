@@ -77,12 +77,14 @@ export default function DirectMetricsPanel({ accessToken }: { accessToken: strin
     ) ?? [];
   const chart = history.data?.points.map(([time, value]) => ({ time, value })) ?? [];
   const selectedMetric = source?.metrics.find((item) => item.key === key);
-  if (!snapshot.isPending && !snapshot.isError && !source) return null;
   return (
     <section className="space-y-5 border-t pt-6" aria-label="源采集监控面板">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">源采集监控</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            后台持续采集，页面每十秒刷新。累计值与窗口吞吐、时延分别展示。
+          </p>
         </div>
       </div>
       {snapshot.isPending && <p role="status">正在读取源采集状态…</p>}
@@ -93,7 +95,7 @@ export default function DirectMetricsPanel({ accessToken }: { accessToken: strin
       )}
       {!snapshot.isPending && !snapshot.isError && !source && (
         <p className="text-sm text-muted-foreground">
-          尚未配置源采集源。打开“配置源采集”，填写独立实例的 /metrics 地址和 API Key。
+          尚未配置采集源。打开“配置源采集”，填写独立实例的 /metrics 地址和 API Key。
         </p>
       )}
       {!snapshot.isPending && !snapshot.isError && source && (
@@ -148,7 +150,7 @@ export default function DirectMetricsPanel({ accessToken }: { accessToken: strin
           {source.reset && <p className="text-sm">检测到引擎计数重置，速率与窗口时延正在重新积累样本。</p>}
           <div className="grid gap-x-6 gap-y-4 border-y py-5 sm:grid-cols-2 xl:grid-cols-4">
             {source.metrics
-              .filter((item) => favorites.has(item.key) && item.value !== null)
+              .filter((item) => favorites.has(item.key))
               .map((item) => (
                 <div key={item.key}>
                   <p className="text-sm text-muted-foreground">{item.label}</p>
@@ -163,78 +165,76 @@ export default function DirectMetricsPanel({ accessToken }: { accessToken: strin
                 </div>
               ))}
           </div>
-          {Boolean(history.data?.points.length) && (
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-4">
-                <label className="grid min-w-0 max-w-full gap-2 text-sm">
-                  趋势指标
-                  <select className={selectClass} value={key} onChange={(event) => setKey(event.target.value)}>
-                    {!source.metrics.some((item) => item.key === key) && (
-                      <option value={key}>输出令牌速率（暂无指标）</option>
-                    )}
-                    {source.metrics.map((item) => (
-                      <option key={item.key} value={item.key}>
-                        {item.label} · {item.scope}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid min-w-0 max-w-full gap-2 text-sm">
-                  历史时间
-                  <select
-                    className={selectClass}
-                    value={minutes}
-                    onChange={(event) => setMinutes(Number(event.target.value))}
-                  >
-                    <option value={15}>最近十五分钟</option>
-                    <option value={60}>最近一小时</option>
-                    <option value={360}>最近六小时</option>
-                    <option value={1440}>最近一天</option>
-                    <option value={10080}>最近七天</option>
-                  </select>
-                </label>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                历史从启用采集后积累，按采集时间展示。空值表示未采到有效样本，不填补为零。
-                {selectedMetric ? `单位：${selectedMetric.unit}` : ""}
-              </p>
-              {history.isError && <p role="alert">历史读取失败，请检查持久化目录和服务状态。</p>}
-              {!history.isError && !chart.some((item) => item.value !== null) && (
-                <p className="py-6 text-sm text-muted-foreground">当前时间范围暂无有效趋势数据。</p>
-              )}
-              {!history.isError && chart.some((item) => item.value !== null) && (
-                <div className="h-64" role="img" aria-label="源采集指标趋势">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chart}>
-                      <CartesianGrid vertical={false} stroke="var(--border)" />
-                      <XAxis
-                        dataKey="time"
-                        tickFormatter={(value) => new Date(Number(value) * 1000).toLocaleTimeString("zh-CN")}
-                        minTickGap={60}
-                      />
-                      <YAxis tickFormatter={(value) => format(Number(value))} width={75} />
-                      <Tooltip
-                        labelFormatter={(value) => new Date(Number(value) * 1000).toLocaleString("zh-CN")}
-                        contentStyle={{
-                          background: "var(--popover)",
-                          borderColor: "var(--border)",
-                          color: "var(--foreground)",
-                        }}
-                      />
-                      <Line
-                        dataKey="value"
-                        name={selectedMetric?.label ?? "指标值"}
-                        stroke="#2563eb"
-                        dot={false}
-                        isAnimationActive={false}
-                        connectNulls={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-4">
+              <label className="grid min-w-0 max-w-full gap-2 text-sm">
+                趋势指标
+                <select className={selectClass} value={key} onChange={(event) => setKey(event.target.value)}>
+                  {!source.metrics.some((item) => item.key === key) && (
+                    <option value={key}>输出令牌速率（暂无指标）</option>
+                  )}
+                  {source.metrics.map((item) => (
+                    <option key={item.key} value={item.key}>
+                      {item.label} · {item.scope}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid min-w-0 max-w-full gap-2 text-sm">
+                历史时间
+                <select
+                  className={selectClass}
+                  value={minutes}
+                  onChange={(event) => setMinutes(Number(event.target.value))}
+                >
+                  <option value={15}>最近十五分钟</option>
+                  <option value={60}>最近一小时</option>
+                  <option value={360}>最近六小时</option>
+                  <option value={1440}>最近一天</option>
+                  <option value={10080}>最近七天</option>
+                </select>
+              </label>
             </div>
-          )}
+            <p className="text-xs text-muted-foreground">
+              历史从启用采集后积累，按采集时间展示。空值表示未采到有效样本，不填补为零。
+              {selectedMetric ? `单位：${selectedMetric.unit}` : ""}
+            </p>
+            {history.isError && <p role="alert">历史读取失败，请检查持久化目录和服务状态。</p>}
+            {!history.isError && !chart.some((item) => item.value !== null) && (
+              <p className="py-6 text-sm text-muted-foreground">当前时间范围暂无有效趋势数据。</p>
+            )}
+            {!history.isError && chart.some((item) => item.value !== null) && (
+              <div className="h-64" role="img" aria-label="源采集指标趋势">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chart}>
+                    <CartesianGrid vertical={false} stroke="var(--border)" />
+                    <XAxis
+                      dataKey="time"
+                      tickFormatter={(value) => new Date(Number(value) * 1000).toLocaleTimeString("zh-CN")}
+                      minTickGap={60}
+                    />
+                    <YAxis tickFormatter={(value) => format(Number(value))} width={75} />
+                    <Tooltip
+                      labelFormatter={(value) => new Date(Number(value) * 1000).toLocaleString("zh-CN")}
+                      contentStyle={{
+                        background: "var(--popover)",
+                        borderColor: "var(--border)",
+                        color: "var(--foreground)",
+                      }}
+                    />
+                    <Line
+                      dataKey="value"
+                      name={selectedMetric?.label ?? "指标值"}
+                      stroke="#2563eb"
+                      dot={false}
+                      isAnimationActive={false}
+                      connectNulls={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
           <div className="space-y-3">
             <label className="grid max-w-md gap-2 text-sm">
               筛选汇总指标
@@ -339,24 +339,21 @@ export default function DirectMetricsPanel({ accessToken }: { accessToken: strin
               </div>
             </div>
           </details>
-          {Boolean(snapshot.data?.alerts.length) && (
-            <section className="space-y-3 border-t pt-4" aria-label="源采集告警">
-              <h3 className="font-medium">源采集活动告警</h3>
-              {snapshot.data?.alerts.length ? (
-                snapshot.data.alerts.map((alert, index) => (
-                  <p className="text-sm" key={index}>
-                    {alert.severity} · {alert.name} · {alert.summary}：{alert.description}
-                  </p>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  当前未触发配置的采集、排队、缓存或首令牌时延告警；未采集的指标不参与判断。
+          <section className="space-y-3 border-t pt-4" aria-label="源采集告警">
+            <h3 className="font-medium">源采集活动告警</h3>
+            {snapshot.data?.alerts.length ? (
+              snapshot.data.alerts.map((alert, index) => (
+                <p className="text-sm" key={index}>
+                  {alert.severity} · {alert.name} · {alert.summary}：{alert.description}
                 </p>
-              )}
-            </section>
-          )}
-          <details className="text-xs text-muted-foreground">
-            <summary className="cursor-pointer">统计口径说明</summary>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                当前未触发配置的采集、排队、缓存或首令牌时延告警；未采集的指标不参与判断。
+              </p>
+            )}
+          </section>
+          <div className="text-xs text-muted-foreground" aria-label="源采集统计口径说明">
             <p className="mt-2">
               后台持续采集，页面每十秒刷新。累计值来自引擎进程，窗口速率与时延由最近五分钟内有效采样计算。
             </p>
@@ -364,7 +361,7 @@ export default function DirectMetricsPanel({ accessToken }: { accessToken: strin
               引擎累计包含所有到达该引擎的调用，不等同于网关用量。此面板不会与 Prometheus
               数值相加。昇腾设备利用率需要额外配置设备导出器。
             </p>
-          </details>
+          </div>
         </>
       )}
     </section>

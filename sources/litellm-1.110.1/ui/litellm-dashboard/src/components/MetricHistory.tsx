@@ -28,7 +28,15 @@ const timeLabel = (timestamp: number) =>
     hour: "2-digit",
     minute: "2-digit",
   });
-export default function MetricHistory({ accessToken, options }: { accessToken: string | null; options: Option[] }) {
+export default function MetricHistory({
+  accessToken,
+  options,
+  showWhenEmpty = false,
+}: {
+  accessToken: string | null;
+  options: Option[];
+  showWhenEmpty?: boolean;
+}) {
   const [key, setKey] = useState(options[0]?.key ?? "output_tokens");
   const [minutes, setMinutes] = useState(60);
   const history = useQuery({
@@ -53,7 +61,7 @@ export default function MetricHistory({ accessToken, options }: { accessToken: s
     }),
   );
   const data = [...points.values()].sort((a, b) => Number(a.time) - Number(b.time));
-  if (!history.isError && !data.length) return null;
+  if (!showWhenEmpty && !history.isError && !data.length) return null;
   const label = (labels: Record<string, string>, index: number) =>
     [
       labels.model_name ?? labels.model,

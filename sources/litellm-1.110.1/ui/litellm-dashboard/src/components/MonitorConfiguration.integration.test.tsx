@@ -26,6 +26,13 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("监控配置", () => {
+  it("未传入页面标题时保留独立配置区，不接管资源页标题与刷新", () => {
+    renderWithProviders(<MonitorConfiguration accessToken="test-only" userRole="Admin" />);
+    expect(screen.getByRole("heading", { name: "源采集配置" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Prometheus 接入配置" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "配置源采集" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("button", { name: "刷新" })).not.toBeInTheDocument();
+  });
   it("配置入口位于刷新前且默认收起，展开配置不打断监控", async () => {
     const refresh = vi.fn();
     renderWithProviders(
