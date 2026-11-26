@@ -144,8 +144,6 @@ export const ToolPoliciesPanel: React.FC<ToolPoliciesPanelProps> = ({ accessToke
 
   return (
     <div className="w-full">
-      <h1 className="text-2xl font-semibold text-foreground mb-6">{t("toolPolicies.panel.title")}</h1>
-
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <MetricCard
           label={t("toolPolicies.panel.metrics.newToday")}

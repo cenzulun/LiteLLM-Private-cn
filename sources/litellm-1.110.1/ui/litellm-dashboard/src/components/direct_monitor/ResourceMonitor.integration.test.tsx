@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, renderWithProviders, screen, testQueryClient, within } from "../../../tests/test-utils";
 import ResourceMonitor from "@/app/(dashboard)/resource-monitor/page";
+import { DashboardPageContext } from "@/components/shared/DashboardPageContext";
 
 vi.mock("@/app/(dashboard)/hooks/useAuthorized", () => ({
   default: () => ({ accessToken: "test-only", userRole: "Admin", isLoading: false, isAuthorized: true }),
@@ -26,7 +27,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("资源页配置入口", () => {
   it("在标题操作栏中排列两个配置入口与刷新，默认不显示独立配置区，保留指标内容", async () => {
-    renderWithProviders(<ResourceMonitor />);
+    renderWithProviders(<DashboardPageContext.Provider value={true}><ResourceMonitor /></DashboardPageContext.Provider>);
     const toolbar = screen.getByLabelText("监控操作栏");
     const buttons = within(toolbar).getAllByRole("button");
     expect(buttons.map((button) => button.textContent)).toEqual([
@@ -34,7 +35,7 @@ describe("资源页配置入口", () => {
       "配置监控源",
       expect.stringMatching(/刷新/),
     ]);
-    expect(within(toolbar).getByRole("heading", { name: "引擎与昇腾资源" })).toBeVisible();
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "源采集配置" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Prometheus 接入配置" })).not.toBeInTheDocument();
     expect(await screen.findByText(/尚未配置引擎或昇腾设备采集源/)).toBeVisible();

@@ -280,7 +280,7 @@ const SearchTools: React.FC<SearchToolsProps> = ({ accessToken, userRole, userID
     );
 
   return (
-    <div className="w-full h-full p-6">
+    <div className="min-w-0 w-full h-full p-4">
       <DeleteResourceModal
         isOpen={isDeleteModalOpen}
         title={t("searchTools.page.deleteModal.title")}
@@ -346,10 +346,9 @@ const SearchTools: React.FC<SearchToolsProps> = ({ accessToken, userRole, userID
         </DialogContent>
       </Dialog>
 
-      <h1 className="text-lg font-semibold text-foreground">{t("searchTools.page.title")}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{t("searchTools.page.subtitle")}</p>
+
       {isAdminRole(userRole) && (
-        <Button className="mt-4 mb-4" variant="outline" onClick={() => setCreateModalVisible(true)}>
+        <Button className="mb-4" variant="outline" onClick={() => setCreateModalVisible(true)}>
           {t("searchTools.page.addButton")}
         </Button>
       )}

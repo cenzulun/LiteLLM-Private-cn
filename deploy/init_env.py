@@ -47,7 +47,7 @@ def main() -> None:
         "WEB_PORT": str(args.web_port),
         "LOCAL_DEPENDENCIES": "true" if args.local_dependencies else "false",
         "MOTOR_IMAGE": f"realai/motor:3.2.0-runtime-{architecture}",
-        "GATEWAY_IMAGE": f"realai/gateway:1.0.16-{architecture}",
+        "GATEWAY_IMAGE": f"realai/gateway:1.0.17-{architecture}",
         "POSTGRES_IMAGE": "postgres:16-alpine",
         "REDIS_IMAGE": "redis:7-alpine",
         "DATABASE_URL": database_url,

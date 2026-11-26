@@ -59,17 +59,10 @@ export default function DirectMetricsPanel({
     (metric) => !search || `${metric.label} ${metric.key} ${metric.scope}`.toLowerCase().includes(search.toLowerCase()),
   );
   const alerts = snapshot.data?.alerts.filter((alert) => sources.some((item) => item.id === alert.source_id)) ?? [];
-  const heading = { resources: "引擎与设备指标", overview: "推理运行态势", inference: "推理实例监控" }[mode];
   return (
-    <section className="space-y-5" aria-label="源采集监控面板">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">{heading}</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {mode === "resources" ? "缓存、进程与昇腾设备状态" : "吞吐、运行负载、排队与时延"} · 每十秒刷新
-          </p>
-        </div>
-        {source && (
+    <section className="space-y-4" aria-label="源采集监控面板">
+      {source && (
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <label className="flex max-w-full items-center gap-2 text-sm">
             {mode === "resources" ? "资源实例" : "模型或实例"}
             <select
@@ -84,8 +77,8 @@ export default function DirectMetricsPanel({
               ))}
             </select>
           </label>
-        )}
-      </div>
+        </div>
+      )}
       {snapshot.isPending && <p role="status">正在读取采集状态…</p>}
       {snapshot.isError && (
         <p role="alert" className="text-destructive">
@@ -93,8 +86,8 @@ export default function DirectMetricsPanel({
         </p>
       )}
       {!snapshot.isPending && !snapshot.isError && !source && (
-        <div className="monitor-surface p-8 text-sm text-muted-foreground">
-          尚未配置{mode === "resources" ? "引擎或昇腾设备" : "推理引擎"}采集源。请在“配置源采集”中添加指标接口。
+        <div className="monitor-surface p-4 text-sm text-muted-foreground">
+          尚未配置{mode === "resources" ? "引擎或昇腾设备" : "推理引擎"}采集源。
         </div>
       )}
       {source && (

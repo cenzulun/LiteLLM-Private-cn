@@ -114,6 +114,12 @@ form_guide = (ROOT / 'build-tools/表单填写说明-1.0.12.md').read_text(encod
 (OUT / '表单填写与升级说明.md').write_text(form_guide, encoding='utf8', newline='\n')
 copy(ROOT / 'docs/直接采集监控接入.md', OUT / '直接采集监控接入.md')
 copy(ROOT / f'docs/版本说明-{VERSION}.md', OUT / '本版更新说明.md')
+layout_guide = ROOT / 'docs/全站页面布局规范.md'
+if layout_guide.exists():
+    copy(layout_guide, OUT / layout_guide.name)
+layout_acceptance = ROOT / f'docs/布局验收-{VERSION}.md'
+if layout_acceptance.exists():
+    copy(layout_acceptance, OUT / '界面验收记录.md')
 copy(ROOT / 'scripts/collect_vllm_metrics.sh', OUT / 'collect_vllm_metrics.sh')
 copy(ROOT / 'scripts/diagnose_redis.py', OUT / 'diagnose_redis.py')
 copy(ROOT / 'scripts/upgrade_gateway.sh', OUT / 'upgrade_gateway.sh')
@@ -127,6 +133,8 @@ for pattern in ['test-direct-monitor-validated.log', 'test-direct-routing.log', 
     for source in (ROOT / 'build-tools').glob(pattern):
         copy(source, verification / source.name)
 for pattern in [f'release-validation-{VERSION}.json', f'test-ui*-{VERSION}.log', f'test-trends-final-{VERSION}.log',
+                f'test-layout-{VERSION}.log', f'lint-layout-final-{VERSION}.log',
+                f'layout-audit-final-{VERSION}.json', f'layout-mobile-final-{VERSION}.json',
                 f'test-arm64-canvas-{VERSION}.log', f'live-canvas-{VERSION}.json', f'browser-monitor-{VERSION}.log',
                 f'lint-canvas-final-{VERSION}.log', f'design-monitor-{VERSION}.json',
                 f'test-monitor-scope-{VERSION}.log', f'lint-monitor-scope-{VERSION}.log',

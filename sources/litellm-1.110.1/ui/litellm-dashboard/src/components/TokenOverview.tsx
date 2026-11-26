@@ -28,15 +28,10 @@ export default function TokenOverview({ compact = false }: { compact?: boolean }
   const rows = useMemo(() => tokenRows(usage.results, inventory.data), [usage.results, inventory.data]);
   const totals = usage.totals;
   return (
-    <div className="operations-workspace space-y-7 rounded-xl p-5">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{compact ? "令牌用量统计" : "模型运行总览"}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            最近七天的实际调用数据。每三十秒刷新模型接入清单，未使用的已接入模型也会展示。
-          </p>
-        </div>
-        <div className="flex gap-3">
+    <div className="space-y-4" aria-label={compact ? "令牌用量统计" : "模型运行总览"}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm text-muted-foreground">最近七天</span>
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             onClick={() => {
@@ -54,7 +49,7 @@ export default function TokenOverview({ compact = false }: { compact?: boolean }
           {usage.failed ? "用量查询失败，请刷新重试。" : "模型清单读取失败，目前仅展示有调用记录的模型。"}
         </p>
       )}
-      <dl className="grid grid-cols-2 gap-x-8 gap-y-6 border-y py-6 lg:grid-cols-4">
+      <dl className="monitor-surface grid grid-cols-2 gap-x-6 gap-y-4 p-4 lg:grid-cols-4">
         {[
           ["输入令牌", totals.inputTokens],
           ["输出令牌", totals.outputTokens],
@@ -86,9 +81,7 @@ export default function TokenOverview({ compact = false }: { compact?: boolean }
           查看单次调用日志
         </a>
       </div>
-      <p className="text-xs leading-5 text-muted-foreground">
-        令牌统计来自上游响应中的实际用量；上游未返回用量时，无法视为完整统计。未接入生产监控时不会生成示例数据。
-      </p>
+      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">统计口径</summary><p className="mt-2">令牌统计以模型响应中的实际用量为准，上游未返回用量的请求不计入完整令牌统计。</p></details>
     </div>
   );
 }

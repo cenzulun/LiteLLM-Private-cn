@@ -21,12 +21,9 @@ export default function LocalRoutingActivity({
   const total = rows.reduce((sum, row) => sum + row.completed, 0);
   return (
     <section className="monitor-surface overflow-hidden" aria-label="实际分流记录统计">
-      <div className="px-5 py-4">
-        <h2 className="text-base font-semibold">实际分流记录统计</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          最近 {minutes} 分钟 ·
-          来自网关持久化调用记录，无需外部监控源；仅统计已记录的完成尝试，受三十天及两万条保留上限约束。
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+        <h2 className="text-sm font-semibold">分流统计</h2>
+        <span className="text-xs text-muted-foreground" title="仅统计已记录的完成尝试，最多保留三十天及两万条。">最近 {minutes} 分钟</span>
       </div>
       {error ? (
         <p role="alert" className="p-5 text-sm text-destructive">

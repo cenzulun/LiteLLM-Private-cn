@@ -20,7 +20,6 @@ import GuardrailTestPlayground from "./GuardrailTestPlayground";
 import { Guardrail } from "@/components/guardrails/types";
 import { GuardrailDeleteModal } from "./GuardrailDeleteModal";
 import { CustomCodeModal } from "./custom_code";
-import GuardrailGarden from "./guardrail_garden";
 import { TeamGuardrailsTab } from "./TeamGuardrailsTab";
 
 interface GuardrailsPanelProps {
@@ -100,7 +99,7 @@ const GuardrailsPanel: React.FC<GuardrailsPanelProps> = ({ accessToken, userRole
   };
 
   return (
-    <div className="w-full mx-auto flex-auto overflow-y-auto m-8 p-2">
+    <div className="min-w-0 w-full p-4">
       <Tabs defaultValue="guardrails">
         <TabsList variant="line">
           {isAdmin && (

@@ -82,9 +82,9 @@ export function ProjectDetail({ projectId, onBack }: ProjectDetailProps) {
           </Button>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-semibold tracking-tight text-foreground">
+              <h2 className="text-xl font-semibold tracking-tight text-foreground">
                 {project.project_alias ?? project.project_id}
-              </h1>
+              </h2>
               <StatusBadge
                 tone={project.blocked ? "error" : "success"}
                 label={project.blocked ? t("projects.detail.status.blocked") : t("projects.detail.status.active")}

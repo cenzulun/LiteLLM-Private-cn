@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { RefreshCw } from "lucide-react";
-import { Trans, useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import TagInfoView from "./tag_info";
 import { modelInfoCall } from "@/components/networking";
@@ -130,7 +130,7 @@ const TagManagement: React.FC<TagProps> = ({ accessToken, userID, userRole }) =>
   }, [accessToken]);
 
   return (
-    <div className="mx-4 h-full">
+    <div className="h-full p-4">
       {selectedTagId ? (
         <TagInfoView
           tagId={selectedTagId}
@@ -143,9 +143,9 @@ const TagManagement: React.FC<TagProps> = ({ accessToken, userID, userRole }) =>
           editTag={editTag}
         />
       ) : (
-        <div className="flex h-full w-full flex-col p-8 pt-10">
-          <div className="mt-2 mb-4 flex w-full items-center justify-between">
-            <h1>{t("tagManagement.page.title")}</h1>
+        <div className="flex min-w-0 h-full w-full flex-col">
+          <div className="mb-3 flex flex-wrap w-full items-center justify-end gap-2">
+            <Button onClick={() => setIsCreateModalVisible(true)}>{t("tagManagement.page.create")}</Button>
             <div className="flex items-center space-x-2">
               {lastRefreshed && (
                 <p className="text-sm">
@@ -163,24 +163,6 @@ const TagManagement: React.FC<TagProps> = ({ accessToken, userID, userRole }) =>
               </Button>
             </div>
           </div>
-
-          <div className="mb-4 text-sm">
-            {t("tagManagement.page.intro")}
-            <p>
-              <Trans
-                i18nKey="tagManagement.page.routingHelp"
-                components={{
-                  docs: (
-                    <span hidden aria-hidden="true" />
-                  ),
-                }}
-              />
-            </p>
-          </div>
-
-          <Button className="mb-4 self-start" onClick={() => setIsCreateModalVisible(true)}>
-            {t("tagManagement.page.create")}
-          </Button>
 
           <div className="mt-2 flex min-h-0 flex-1 flex-col">
             <TagTable

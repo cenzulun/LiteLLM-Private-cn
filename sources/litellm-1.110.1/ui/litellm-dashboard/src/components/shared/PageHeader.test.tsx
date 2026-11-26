@@ -3,8 +3,27 @@ import { Users } from "lucide-react";
 import { describe, expect, it } from "vitest";
 
 import { PageHeader, PageHeaderControls, PageHeaderDescription, PageHeaderTitle } from "./PageHeader";
+import { DashboardPageContext } from "./DashboardPageContext";
+import i18n from "@/i18n/i18n";
 
 describe("PageHeader", () => {
+  it("keeps dashboard actions while omitting the duplicate heading and introduction", () => {
+    renderWithProviders(
+      <DashboardPageContext.Provider value={true}>
+        <PageHeader>
+          <PageHeaderTitle>模型管理</PageHeaderTitle>
+          <PageHeaderDescription>重复的页面介绍</PageHeaderDescription>
+          <PageHeaderControls>
+            <button>添加模型</button>
+          </PageHeaderControls>
+        </PageHeader>
+      </DashboardPageContext.Provider>,
+    );
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+    expect(screen.queryByText("重复的页面介绍")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "添加模型" })).toBeEnabled();
+  });
+
   it("should name the page heading by its text alone when it carries an icon", () => {
     renderWithProviders(
       <PageHeader>
@@ -31,7 +50,7 @@ describe("PageHeader", () => {
       </PageHeader>,
     );
 
-    const controls = screen.getByRole("group", { name: "Page controls" });
+    const controls = screen.getByRole("group", { name: i18n.t("shell.pageHeader.controls") });
     expect(
       within(controls)
         .getAllByRole("button")

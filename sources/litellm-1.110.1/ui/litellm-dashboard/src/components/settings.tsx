@@ -1,11 +1,11 @@
 import type { ParseKeys } from "i18next";
 import React, { useEffect, useState } from "react";
 import { Controller, FormProvider, useForm, useFormContext } from "react-hook-form";
-import { Trans, useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next";
 
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+
 import {
   Combobox,
   ComboboxContent,
@@ -18,16 +18,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EmailSettings from "./email_settings";
-import MSTeamsSettings from "./MSTeamsSettings";
 import { Logo } from "@/components/molecules/logo/Logo";
 import { toast } from "@/lib/toast";
 import { useUrlTab } from "@/hooks/useUrlTab";
 
-import AlertingSettings from "./alerting/alerting_settings";
-import CloudZeroCostTracking from "./CloudZeroCostTracking/CloudZeroCostTracking";
 import DeleteResourceModal from "./common_components/DeleteResourceModal";
 import {
   deleteCallback,
@@ -606,8 +603,8 @@ const Settings: React.FC<SettingsPageProps> = ({ accessToken, userRole, userID, 
   }
 
   return (
-    <div className="mx-4">
-      <div className="grid grid-cols-1 gap-2 p-8 w-full mt-2">
+    <div className="p-4">
+      <div className="grid min-w-0 grid-cols-1 gap-4 w-full">
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as SettingsTab)}>
           <TabsList variant="line">
             <TabsTrigger value="logging-callbacks">{t("loggingAndAlerts.page.tabs.loggingCallbacks")}</TabsTrigger>

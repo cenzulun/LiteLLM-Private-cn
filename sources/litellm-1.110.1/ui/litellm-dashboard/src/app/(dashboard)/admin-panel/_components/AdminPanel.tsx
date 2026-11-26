@@ -3,12 +3,12 @@
  * Use this to avoid sharing master key with others
  */
 import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
-import { Alert, AlertDescription, AlertTitle } from "@/components/shared/Alert";
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Info, TriangleAlert } from "lucide-react";
+
 import React, { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { useBaseUrl } from "@/components/constants";
@@ -17,7 +17,6 @@ import { toast } from "@/lib/toast";
 import { addAllowedIP, deleteAllowedIP, getAllowedIPs, getSSOSettings } from "@/components/networking";
 import SCIMConfig from "@/components/SCIM";
 import LoggingSettings from "@/components/Settings/AdminSettings/LoggingSettings/LoggingSettings";
-import SSOSettings from "@/components/Settings/AdminSettings/SSOSettings/SSOSettings";
 import UISettings from "@/components/Settings/AdminSettings/UISettings/UISettings";
 import TeamAdminEditableFieldsSettings from "@/components/Settings/AdminSettings/UISettings/TeamAdminEditableFieldsSettings";
 import UserBannerSettings from "@/components/Settings/AdminSettings/UserBannerSettings/UserBannerSettings";
@@ -402,9 +401,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ proxySettings }) => {
   ].filter(item => !["plugins", "web-search-interception"].includes(item.key) && (premiumUser || !["scim", "hashicorp-vault", "cyberark"].includes(item.key)));
 
   return (
-    <div className="w-full m-2 mt-2 p-8">
-      <h2 className="mb-2 text-base font-semibold text-foreground">{t("adminPanel.page.title")}</h2>
-      <p className="mb-4 text-sm text-foreground">{t("adminPanel.page.subtitle")}</p>
+    <div className="min-w-0 w-full p-4">
       <Tabs defaultValue={tabItems[0].key}>
         <TabsList variant="line" className="mb-4 h-auto flex-wrap">
           {tabItems.map((item) => (

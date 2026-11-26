@@ -11,15 +11,13 @@ import ModelSettingsModal from "@/components/model_dashboard/ModelSettingsModal/
 import { ModelData } from "@/components/model_dashboard/types";
 import { toast } from "@/lib/toast";
 import { isProxyAdminRole } from "@/utils/roles";
-import { uiHref } from "@/utils/uiHref";
 import { modelDeleteCall, modelPatchUpdateCall } from "@/components/networking";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer/debouncer";
 import { ColumnFiltersState, functionalUpdate, OnChangeFn, PaginationState, SortingState } from "@tanstack/react-table";
-import { Info } from "lucide-react";
 import { createParser, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { useCallback, useMemo, useState } from "react";
-import { Trans, useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next";
 
 import { useModelsInfo } from "../../hooks/models/useModels";
 import { ROUTING_STATUS_FILTER_ID, routingStatusToBlocked } from "../utils/routingStatus";
@@ -251,10 +249,7 @@ const AllModelsTab = ({
     [teams],
   );
 
-  const selectedTeam = useMemo(
-    () => (teams ?? []).find((team) => team.team_id === selectedTeamValue) ?? null,
-    [teams, selectedTeamValue],
-  );
+
 
   const modelToDelete = useMemo(() => {
     if (!deleteModalModelId || !modelData?.data) return null;
@@ -314,7 +309,7 @@ const AllModelsTab = ({
     setIsModelSettingsModalVisible(true);
   }, []);
 
-  const teamAccessLabel = selectedTeam?.team_alias || selectedTeam?.team_id || "";
+
 
   return (
     <div className="w-full">
@@ -353,32 +348,6 @@ const AllModelsTab = ({
           pausingModelId={pausingModelId}
           credentialLabels={credentialLabels}
         />
-
-        {modelViewMode === "current_team" && (
-          <div className="flex items-start gap-2 px-1 text-xs text-muted-foreground">
-            <Info className="mt-0.5 size-3.5 shrink-0" />
-            {selectedTeamValue === PERSONAL_TEAM_VALUE ? (
-              <span>
-                <Trans
-                  i18nKey="modelsAndEndpoints.allModelsTab.personalHint"
-                  components={{
-                    keys: <a href={uiHref("api-keys")} className="font-medium text-info hover:underline" />,
-                  }}
-                />
-              </span>
-            ) : (
-              <span>
-                <Trans
-                  i18nKey="modelsAndEndpoints.allModelsTab.teamHint"
-                  components={{
-                    team: <>{teamAccessLabel}</>,
-                    keys: <a href={uiHref("api-keys")} className="font-medium text-info hover:underline" />,
-                  }}
-                />
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
       <DeleteResourceModal

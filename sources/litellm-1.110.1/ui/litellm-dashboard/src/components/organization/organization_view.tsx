@@ -161,7 +161,7 @@ const OrganizationInfoView: React.FC<OrganizationInfoProps> = ({
             <ArrowLeft className="size-4" />
             {t("organizations.view.backToList")}
           </Button>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">{orgData.organization_alias}</h1>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">{orgData.organization_alias}</h2>
           <div className="flex items-center gap-1">
             <span className="font-mono text-sm text-muted-foreground">{orgData.organization_id}</span>
             <CopyButton value={orgData.organization_id} label={t("organizations.view.copyId")} iconClassName="size-3" />

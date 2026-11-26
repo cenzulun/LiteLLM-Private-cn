@@ -592,6 +592,8 @@ export const labelText = (item: MenuItem): string =>
 // Breadcrumb ("Section" / "Page") for the top bar, derived from the same nav config.
 export const getBreadcrumb = (pathname: string): { section: string | null; title: string } => {
   const route = routeForPathname(pathname);
+  if (route === "change-password") return { section: null, title: "修改密码" };
+  if (route === "projects") return { section: null, title: "项目管理" };
   if (route === "aria") return { section: null, title: "Aria Agent" };
   for (const group of menuGroups) {
     for (const item of group.items) {

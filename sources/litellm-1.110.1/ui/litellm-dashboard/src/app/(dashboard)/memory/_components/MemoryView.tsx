@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PaginationState } from "@tanstack/react-table";
 import { Plus } from "lucide-react";
 import React, { useCallback, useMemo, useState } from "react";
-import { Trans, useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next";
 
 import { MemoryRow, createMemory, deleteMemory, fetchMemoryList, updateMemory } from "@/components/networking";
 import DeleteResourceModal from "@/components/common_components/DeleteResourceModal";
@@ -176,24 +176,10 @@ export const MemoryView: React.FC<MemoryViewProps> = ({ accessToken }) => {
   };
 
   return (
-    <div className="w-full p-6">
-      <div className="flex flex-col gap-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground">{t("memory.view.title")}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              <Trans
-                i18nKey="memory.view.intro"
-                components={{
-                  endpoint: (
-                    <code className="rounded-sm border border-border bg-muted px-1 py-0.5 font-mono text-xs text-foreground">
-                      /v1/memory
-                    </code>
-                  ),
-                }}
-              />
-            </p>
-          </div>
+    <div className="min-w-0 w-full p-4">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-end gap-2">
+
           <Button onClick={() => setIsCreateOpen(true)}>
             <Plus />
             {t("memory.view.newMemory")}

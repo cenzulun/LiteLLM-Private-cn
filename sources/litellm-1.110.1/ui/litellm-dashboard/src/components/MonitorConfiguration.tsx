@@ -138,7 +138,7 @@ export default function MonitorConfiguration({
       <div
         className={
           title
-            ? "flex flex-wrap items-center justify-between gap-3"
+            ? "flex flex-wrap items-center justify-end gap-2"
             : "flex flex-wrap items-center justify-between gap-3 rounded-xl border p-5"
         }
         aria-label="监控操作栏"

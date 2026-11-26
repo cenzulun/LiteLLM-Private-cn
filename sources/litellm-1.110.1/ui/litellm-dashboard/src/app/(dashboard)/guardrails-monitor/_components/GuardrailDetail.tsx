@@ -141,7 +141,7 @@ export function GuardrailDetail({ guardrailId, onBack, accessToken = null, start
           <div>
             <div className="mb-1 flex items-center gap-3">
               <Shield className="size-5 text-muted-foreground" />
-              <h1 className="text-xl font-semibold text-foreground">{data.name}</h1>
+              <h2 className="text-xl font-semibold text-foreground">{data.name}</h2>
               <StatusBadge
                 tone={STATUS_TONE[data.status] ?? "success"}
                 label={data.status.charAt(0).toUpperCase() + data.status.slice(1)}

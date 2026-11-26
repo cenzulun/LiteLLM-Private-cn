@@ -119,14 +119,24 @@ export default function RouteCanvas({
     { key: "retry_after", label: "重试间隔（秒）", min: 0, max: 120 },
   ] as const;
   return (
-    <section className="monitor-surface space-y-5 p-5" aria-label="可视化路由配置">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">路由编排与发布</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            均衡策略应用于同模型副本，模型组之间按连线顺序执行备用切换。
-          </p>
-        </div>
+    <section className="monitor-surface space-y-4 p-4" aria-label="可视化路由配置">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" disabled={!editable || busy} onClick={() => void publish("preview")}>
+          校验编排
+        </Button>
+        <Button disabled={!editable || busy || validated !== stamp} onClick={() => void publish("publish")}>
+          {busy ? "正在处理…" : "发布并生效"}
+        </Button>
+        <Button
+          variant="outline"
+          disabled={!editable || busy || !configuration.data?.previous_available}
+          onClick={() => void publish("rollback")}
+        >
+          回退上一版
+        </Button>
+        <Button variant="ghost" disabled={busy} onClick={reload}>
+          放弃修改并重载
+        </Button>
         <span
           className={`rounded-md px-3 py-1 text-xs ${draft ? "bg-amber-50 text-amber-800" : "bg-blue-50 text-blue-800"}`}
         >
@@ -135,6 +145,14 @@ export default function RouteCanvas({
             : `配置修订 ${configuration.data?.revision ?? "—"} · 已应用 ${configuration.data?.applied_revision ?? "—"}`}
         </span>
       </div>
+      {message && (
+        <p
+          role={failed ? "alert" : "status"}
+          className={`text-sm ${failed ? "text-destructive" : "text-emerald-700 dark:text-emerald-400"}`}
+        >
+          {message}
+        </p>
+      )}
       {(() => {
         if (configuration.isPending || deployments.isPending) return <p role="status">正在读取路由配置与模型部署…</p>;
         if (configuration.isError || deployments.isError)
@@ -257,24 +275,7 @@ export default function RouteCanvas({
                 instances={instances}
               />
             </div>
-            <div className="flex flex-wrap items-center gap-3 border-t pt-4">
-              <Button variant="outline" disabled={!editable || busy} onClick={() => void publish("preview")}>
-                校验编排
-              </Button>
-              <Button disabled={!editable || busy || validated !== stamp} onClick={() => void publish("publish")}>
-                {busy ? "正在处理…" : "发布并生效"}
-              </Button>
-              <Button
-                variant="outline"
-                disabled={!editable || busy || !configuration.data?.previous_available}
-                onClick={() => void publish("rollback")}
-              >
-                回退上一版
-              </Button>
-              <Button variant="ghost" disabled={busy} onClick={reload}>
-                放弃修改并重载
-              </Button>
-            </div>
+
             {!editable && <p className="text-sm text-muted-foreground">当前账号为只读权限。</p>}
             <details className="text-xs text-muted-foreground">
               <summary className="cursor-pointer">执行范围与生效方式</summary>
@@ -299,14 +300,6 @@ export default function RouteCanvas({
           </>
         );
       })()}
-      {message && (
-        <p
-          role={failed ? "alert" : "status"}
-          className={`text-sm ${failed ? "text-destructive" : "text-emerald-700 dark:text-emerald-400"}`}
-        >
-          {message}
-        </p>
-      )}
     </section>
   );
 }

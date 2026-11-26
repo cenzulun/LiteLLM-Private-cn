@@ -200,7 +200,7 @@ const PromptInfoView: React.FC<PromptInfoProps> = ({
         </Button>
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h1 className="text-2xl font-semibold">{t("prompts.info.title")}</h1>
+            <h2 className="text-2xl font-semibold">{t("prompts.info.title")}</h2>
             <div className="flex items-center cursor-pointer">
               <p className="text-sm text-muted-foreground font-mono">{basePromptId}</p>
               <Button

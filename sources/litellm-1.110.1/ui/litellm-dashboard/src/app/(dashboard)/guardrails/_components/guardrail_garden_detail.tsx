@@ -109,7 +109,7 @@ const GuardrailDetailView: React.FC<GuardrailDetailViewProps> = ({ card, onBack,
       {/* ── Header block (Vertex-style) ── */}
       <div className="mb-2 flex items-center gap-4">
         <Logo src={card.logo} label={name} className="w-10 h-10 rounded-lg object-contain shrink-0" />
-        <h1 className="m-0 text-[28px] font-normal leading-tight text-foreground">{name}</h1>
+        <h2 className="m-0 text-[28px] font-normal leading-tight text-foreground">{name}</h2>
       </div>
 
       <p className="m-0 mb-5 text-sm leading-relaxed text-muted-foreground">{description}</p>

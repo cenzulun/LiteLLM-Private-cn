@@ -2450,7 +2450,7 @@ const TeamInfoView: React.FC<TeamInfoProps> = ({
             <ArrowLeftIcon className="h-4 w-4" />
             {t("teams.teamInfo.backToTeams")}
           </Button>
-          <h1 className="text-2xl font-semibold">{info.team_alias}</h1>
+          <h2 className="text-2xl font-semibold">{info.team_alias}</h2>
           <div className="flex items-center">
             <p className="text-sm text-muted-foreground font-mono">{info.team_id}</p>
             <Button

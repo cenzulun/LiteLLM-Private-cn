@@ -40,11 +40,11 @@ export function DashboardHeader({
     window.location.href = `${getLoginUrl()}?worker=${encodeURIComponent(workerId)}`;
   };
   return (
-    <header className="@container h-14 shrink-0 border-b border-border bg-background px-3 sm:px-5">
+    <header data-slot="dashboard-header" className="@container h-14 shrink-0 border-b border-border bg-background px-4">
       <div className="flex h-full items-center gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {navigationTrigger}
-          <h1 className="truncate text-sm font-medium">{pageTitle ?? term(title)}</h1>
+          <h1 id="dashboard-page-title" className="truncate text-base font-semibold">{pageTitle ?? term(title)}</h1>
         </div>
         {workspace === "gateway" && (
           <CommandPaletteTrigger className="hidden w-56 @min-[640px]:flex @min-[1000px]:w-80" />

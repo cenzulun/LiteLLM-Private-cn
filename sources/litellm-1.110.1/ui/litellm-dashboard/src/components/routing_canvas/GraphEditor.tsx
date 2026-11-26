@@ -45,7 +45,7 @@ export default function GraphEditor({
     });
   };
   const width = Math.max(1250, ...graph.nodes.map((node) => node.x + 260));
-  const height = Math.max(520, ...graph.nodes.map((node) => node.y + 190));
+  const height = Math.max(360, ...graph.nodes.map((node) => node.y + 190));
   const fit = () => setZoom(Math.max(0.35, Math.min(1, (viewport.current?.clientWidth ?? width) / width)));
   useEffect(() => {
     const element = viewport.current;
@@ -73,7 +73,6 @@ export default function GraphEditor({
     <div className="min-w-0 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="font-medium">路由编排画布</span>
           <label className="flex items-center gap-2">
             连接类型
             <select
@@ -127,7 +126,7 @@ export default function GraphEditor({
         </p>
       )}
       <div
-        className="route-canvas max-h-[620px] min-h-96 overflow-auto rounded-xl border"
+        className="route-canvas max-h-[560px] min-h-72 overflow-auto rounded-xl border"
         aria-label="路由画布"
         ref={viewport}
       >

@@ -27,15 +27,14 @@ export default function ToolPoliciesView({ accessToken }: ToolPoliciesViewProps)
 
   if (!canViewToolPolicies) {
     return (
-      <div className="p-6 w-full min-w-0 flex-1">
-        <h1 className="text-2xl font-semibold text-foreground mb-2">{t("toolPolicies.view.adminOnly.title")}</h1>
+      <div className="p-4 w-full min-w-0 flex-1">
         <p className="text-sm text-muted-foreground">{t("toolPolicies.view.adminOnly.message")}</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 w-full min-w-0 flex-1">
+    <div className="p-4 w-full min-w-0 flex-1">
       {view.type === "detail" ? (
         <ToolDetail toolName={view.toolName} onBack={handleBack} accessToken={accessToken} />
       ) : (

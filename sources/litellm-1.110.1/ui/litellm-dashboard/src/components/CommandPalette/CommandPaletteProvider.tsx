@@ -26,7 +26,7 @@ export function useCommandPalette(): CommandPaletteContextValue {
   return context;
 }
 
-export function CommandPaletteProvider({ children }: { children: ReactNode }) {
+export function CommandPaletteProvider({ children, showHint = true }: { children: ReactNode; showHint?: boolean }) {
   const [open, setOpenState] = useState(false);
   const [hintSeen, setHintSeen] = useStoredValue(COMMAND_PALETTE_HINT_KEY);
   const [hintDismissedInMemory, setHintDismissedInMemory] = useState(false);
@@ -45,7 +45,7 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
   );
   const toggle = useCallback(() => setOpen(!open), [open, setOpen]);
   const value = useMemo(() => ({ open, setOpen, toggle }), [open, setOpen, toggle]);
-  const shouldShowHint = !hintSeen && !hintDismissedInMemory && !open;
+  const shouldShowHint = showHint && !hintSeen && !hintDismissedInMemory && !open;
 
   const hotkeyOptions = {
     enableOnFormTags: true,

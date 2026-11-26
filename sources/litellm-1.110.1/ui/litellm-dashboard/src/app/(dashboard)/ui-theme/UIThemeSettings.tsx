@@ -129,11 +129,7 @@ const UIThemeSettings: React.FC<UIThemeSettingsProps> = ({ userID, userRole, acc
   }
 
   return (
-    <div className="w-full mx-auto max-w-4xl px-6 py-8">
-      <div className="mb-8">
-        <h1 className="mb-2 text-2xl font-bold">{t("uiTheme.settings.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("uiTheme.settings.description")}</p>
-      </div>
+    <div className="w-full max-w-4xl p-4">
       <Card>
         <CardContent className="space-y-6">
           <div>

@@ -126,7 +126,6 @@ export default function MetricTrends({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h3 className="text-base font-semibold">趋势指标</h3>
-          <p className="mt-1 text-xs text-muted-foreground">{source.name} · 各指标独立坐标，空缺采样不补零</p>
         </div>
         <label className="flex items-center gap-2 text-sm">
           历史时间

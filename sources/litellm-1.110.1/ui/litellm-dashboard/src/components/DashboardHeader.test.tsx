@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DashboardHeader } from "./DashboardHeader";
 import { CommandPaletteProvider } from "@/components/CommandPalette/CommandPaletteProvider";
+import i18n from "@/i18n/i18n";
 
 const { mockUsePluginMode, mockUseUISettings, state } = vi.hoisted(() => {
   const state = {
@@ -55,14 +56,14 @@ describe("DashboardHeader breadcrumb", () => {
     state.pathname = "/ui/models-and-endpoints";
     renderDashboardHeader();
 
-    expect(screen.getByText("Models + Endpoints")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: i18n.t("shell.nav.items.modelsAndEndpoints") })).toBeInTheDocument();
   });
 
   it("titles the dashboard root as Home", () => {
     state.pathname = "/ui/";
     renderDashboardHeader();
 
-    expect(screen.getByText("Home")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: i18n.t("shell.nav.items.home") })).toBeInTheDocument();
   });
 
   it("names the Aria workspace in the header", () => {
@@ -74,6 +75,6 @@ describe("DashboardHeader breadcrumb", () => {
   it("keeps the scoped key search available", () => {
     state.pathname = "/ui/api-keys";
     renderDashboardHeader();
-    expect(screen.getByRole("button", { name: "Search keys…" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: i18n.t("shell.commandPaletteTrigger.keys") })).toBeInTheDocument();
   });
 });

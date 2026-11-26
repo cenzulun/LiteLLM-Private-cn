@@ -160,7 +160,7 @@ export function AccessGroupDetail({ accessGroupId, onBack }: AccessGroupDetailPr
             <ArrowLeftIcon className="size-4" />
           </Button>
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">{accessGroup.access_group_name}</h1>
+            <h2 className="text-xl font-semibold tracking-tight text-foreground">{accessGroup.access_group_name}</h2>
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
               <span>
                 {t("accessGroups.detail.idLabel")}

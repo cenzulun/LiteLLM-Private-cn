@@ -518,13 +518,7 @@ const WorkflowRuns: React.FC<WorkflowRunsProps> = ({ accessToken }) => {
   const statusLabels = Object.fromEntries(RUN_STATUS_OPTIONS.map((status) => [status, t(STATUS_LABEL_KEYS[status])]));
 
   return (
-    <div className="w-full px-8 py-6">
-      {/* page header */}
-      <div className="mb-5">
-        <div className="text-lg font-semibold text-foreground">{t("workflows.header.title")}</div>
-        <div className="mt-0.5 text-[13px] text-muted-foreground">{t("workflows.header.subtitle")}</div>
-      </div>
-
+    <div className="min-w-0 w-full p-4">
       <DataTable
         data={runs}
         columns={columns}

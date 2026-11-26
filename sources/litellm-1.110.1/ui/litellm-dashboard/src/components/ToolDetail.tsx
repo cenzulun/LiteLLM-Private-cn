@@ -261,7 +261,7 @@ export function ToolDetail({ toolName, onBack, accessToken }: ToolDetailProps) {
           <div>
             <div className="mb-1 flex flex-wrap items-center gap-3">
               <Wrench className="size-5 text-muted-foreground" />
-              <h1 className="font-mono text-xl font-semibold">{tool.tool_name}</h1>
+              <h2 className="font-mono text-xl font-semibold">{tool.tool_name}</h2>
               <Badge variant="outline">{tool.origin ?? "—"}</Badge>
               <Badge variant="secondary">
                 {t("toolPolicies.detail.callCount", { value: (tool.call_count ?? 0).toLocaleString() })}

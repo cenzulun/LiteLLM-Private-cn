@@ -67,11 +67,10 @@ export function ChangePasswordForm() {
   };
 
   return (
-    <div className="mx-auto mt-10 w-full max-w-md">
+    <div className="w-full max-w-lg p-4">
       <Card>
         <CardContent>
-          <h3 className="text-2xl font-semibold text-foreground">{t("changePassword.form.title")}</h3>
-          <p className="text-sm text-muted-foreground">{t("changePassword.form.description")}</p>
+
 
           {passwordResetRequired && (
             <Alert variant="warning" className="mt-4">
@@ -80,7 +79,7 @@ export function ChangePasswordForm() {
             </Alert>
           )}
 
-          <form className="mb-2 mt-8" onSubmit={form.handleSubmit(handleSubmit)}>
+          <form className="mb-2" onSubmit={form.handleSubmit(handleSubmit)}>
             <FieldGroup>
               <FormField control={form.control} name="currentPassword" label={t("changePassword.form.currentPassword")}>
                 {({ ref, ...field }) => <PasswordInput {...field} ref={ref} autoComplete="current-password" />}

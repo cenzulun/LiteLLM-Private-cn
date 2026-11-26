@@ -33,6 +33,7 @@ import { Menu } from "lucide-react";
 import { useMediaQuery } from "usehooks-ts";
 import { CommandPaletteProvider } from "@/components/CommandPalette/CommandPaletteProvider";
 import { recordUiEvent } from "@/lib/telemetry/uiEvents";
+import { DashboardPageContext } from "@/components/shared/DashboardPageContext";
 
 const pluginApiClient = createApiClient({ getBaseUrl: () => getProxyBaseUrl() ?? "" });
 
@@ -192,7 +193,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             <SidebarProvider sidebarCollapsed={false} onToggleCollapsed={() => setMobileNavigationKey(null)} />
           </SheetContent>
         </Sheet>
-        <CommandPaletteProvider>
+        <CommandPaletteProvider showHint={false}>
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <DashboardHeader
               accessToken={accessToken}
@@ -218,6 +219,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             <DeploymentHealthPanel handle={deploymentHealthHandle} />
             <UserBanner accessToken={accessToken} />
             <main
+              aria-labelledby="dashboard-page-title"
+              data-slot="dashboard-content"
               className={
                 routeSegment === "aria"
                   ? "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
@@ -225,7 +228,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               }
             >
               
-              {children}
+              <DashboardPageContext.Provider value={true}>{children}</DashboardPageContext.Provider>
             </main>
           </div>
         </CommandPaletteProvider>

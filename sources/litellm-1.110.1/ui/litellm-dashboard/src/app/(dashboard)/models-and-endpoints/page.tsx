@@ -189,20 +189,8 @@ export default function ModelsAndEndpointsPage() {
   }
 
   return (
-    <div className="mx-4">
-      <div className="mt-2 flex w-full flex-col gap-2 p-8">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">{t("modelsAndEndpoints.page.title")}</h2>
-            {isAdmin ? (
-              <p className="text-sm text-muted-foreground">{t("modelsAndEndpoints.page.adminDescription")}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground">{t("modelsAndEndpoints.page.userDescription")}</p>
-            )}
-          </div>
-        </div>
-
-
+    <div className="p-4">
+      <div className="flex min-w-0 w-full flex-col gap-2">
         {modelId ? (
           <ModelInfoView
             modelId={modelId}

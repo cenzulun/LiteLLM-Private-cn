@@ -7,7 +7,6 @@ import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
 import LoadingScreen from "@/components/common_components/LoadingScreen";
 import { getProxyBaseUrl } from "@/components/networking";
 import { Page } from "@/components/shared/Page";
-import { PageHeader, PageHeaderDescription, PageHeaderTitle } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -146,19 +145,8 @@ export default function MotorModule() {
   if (auth.isLoading || !auth.isAuthorized) return <LoadingScreen />;
   return (
     <Page>
-      <PageHeader>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <PageHeaderTitle>推理调度</PageHeaderTitle>
-          {!readOnly && (
-            <Button variant="outline" onClick={startCreating}>
-              新增连接
-            </Button>
-          )}
-        </div>
-        <PageHeaderDescription>
-          纳管内网模型实例并查看实际吞吐，统一管理模型接入、调用密钥及操作记录。
-        </PageHeaderDescription>
-      </PageHeader>
+      {!readOnly && <div className="flex justify-end"><Button variant="outline" onClick={startCreating}>新增连接</Button></div>}
+
       {list.error && (
         <p role="alert" className="mb-5 text-sm text-destructive">
           {extractProxyErrorMessage(list.error)}{" "}

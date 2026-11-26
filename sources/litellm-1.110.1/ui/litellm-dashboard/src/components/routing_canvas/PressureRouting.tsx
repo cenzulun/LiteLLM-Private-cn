@@ -69,9 +69,6 @@ export default function PressureRouting({
       <p className="text-xs text-muted-foreground">
         已绑定 {bound.length} 个副本 · 新鲜采样 {fresh} 个
       </p>
-      <p className="text-xs text-muted-foreground">
-        在历史时延策略上优先选择运行与排队总数最低的健康副本；缺少匹配数据时使用历史时延。
-      </p>
       {config.isError ? (
         <p role="alert" className="text-xs text-destructive">
           采集配置读取失败。
@@ -93,8 +90,8 @@ export default function PressureRouting({
       )}
       {strategy !== "latency-based-routing" && <p className="text-xs text-amber-700">需要先发布“历史时延路由”策略。</p>}
       {!bound.length && (
-        <a className="text-xs text-primary underline underline-offset-4" href="/ui/inference-monitor/">
-          先配置采集源并绑定部署副本
+        <a className="block text-xs text-primary underline underline-offset-4" href="/ui/inference-monitor/">
+          配置采集源并绑定副本
         </a>
       )}
       {message && (

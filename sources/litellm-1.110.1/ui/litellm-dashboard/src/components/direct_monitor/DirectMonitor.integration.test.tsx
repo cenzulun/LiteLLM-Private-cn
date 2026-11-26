@@ -135,7 +135,7 @@ describe("源采集监控", () => {
     );
     renderWithProviders(<DirectMetricsPanel accessToken="test-only" />);
     expect(await screen.findByText(/尚未配置推理引擎采集源/)).toBeVisible();
-    expect(screen.getByRole("heading", { name: "推理实例监控" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "推理实例监控" })).not.toBeInTheDocument();
   });
 
   it("新增时仅展开新源，已有源被保留且操作位于同一行", async () => {
@@ -166,7 +166,7 @@ describe("源采集监控", () => {
 
   it("资源模式不重复展示推理指标和实例总览", async () => {
     renderWithProviders(<DirectMetricsPanel accessToken="test-only" mode="resources" />);
-    expect(await screen.findByRole("heading", { name: "引擎与设备指标" })).toBeVisible();
+    expect(await screen.findByLabelText("资源实例")).toBeVisible();
     expect(screen.queryByRole("heading", { name: "采集实例与模型" })).not.toBeInTheDocument();
     expect(screen.queryByText("输出令牌速率")).not.toBeInTheDocument();
   });

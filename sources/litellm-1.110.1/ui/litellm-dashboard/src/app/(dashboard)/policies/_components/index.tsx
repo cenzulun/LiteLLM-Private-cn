@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Trans, useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription, AlertTitle, AlertAction } from "@/components/shared/Alert";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { toast } from "@/lib/toast";
-import { Info, TriangleAlert, X } from "lucide-react";
+import { TriangleAlert, X } from "lucide-react";
 import { isAdminRole } from "@/utils/roles";
 import PolicyTable from "./PolicyTable";
 import PolicyInfoView from "./policy_info";
@@ -14,7 +14,6 @@ import { FlowBuilderPage } from "./pipeline_flow_builder";
 import AttachmentTable from "./AttachmentTable";
 import AddAttachmentForm from "./add_attachment_form";
 import PolicyTestPanel from "./policy_test_panel";
-import PolicyTemplates from "./policy_templates";
 import GuardrailSelectionModal from "./guardrail_selection_modal";
 import TemplateParameterModal from "./template_parameter_modal";
 import AiSuggestionModal from "./ai_suggestion_modal";
@@ -63,22 +62,6 @@ const DismissibleAlert: React.FC<DismissibleAlertProps> = ({ title, icon, childr
         </Button>
       </AlertAction>
     </Alert>
-  );
-};
-
-const AboutPoliciesAlert = () => {
-  const { t } = useTranslation();
-  return (
-    <DismissibleAlert title={t("policies.panel.aboutPolicies.title")} icon={<Info />}>
-      <p className="mb-3">{t("policies.panel.aboutPolicies.description")}</p>
-      <p className="mb-2 font-semibold">{t("policies.panel.aboutPolicies.whyTitle")}</p>
-      <ul className="mb-3 ml-2 list-inside list-disc space-y-1">
-        <li>{t("policies.panel.aboutPolicies.benefits.toggle")}</li>
-        <li>{t("policies.panel.aboutPolicies.benefits.group")}</li>
-        <li>{t("policies.panel.aboutPolicies.benefits.inherit")}</li>
-      </ul>
-      <span hidden aria-hidden="true" />
-    </DismissibleAlert>
   );
 };
 
@@ -441,7 +424,7 @@ const PoliciesPanel: React.FC<PoliciesPanelProps> = ({ accessToken, userRole }) 
   }
 
   return (
-    <div className="m-8 mx-auto w-full flex-auto overflow-y-auto p-2">
+    <div className="min-w-0 w-full p-4">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList variant="line" className="mb-4 h-auto w-full justify-start rounded-none border-b p-0">
           <TabsTrigger value="policies" className="flex-none rounded-none px-4 py-2">
@@ -456,7 +439,6 @@ const PoliciesPanel: React.FC<PoliciesPanelProps> = ({ accessToken, userRole }) 
         </TabsList>
 
         <TabsContent value="policies" keepMounted>
-          <AboutPoliciesAlert />
 
           <div className="mb-4 flex items-center justify-between">
             <Button onClick={handleAddPolicy} disabled={!accessToken}>
@@ -525,31 +507,7 @@ const PoliciesPanel: React.FC<PoliciesPanelProps> = ({ accessToken, userRole }) 
         </TabsContent>
 
         <TabsContent value="attachments" keepMounted>
-          <DismissibleAlert title={t("policies.panel.aboutAttachments.title")} icon={<Info />}>
-            <p className="mb-3">{t("policies.panel.aboutAttachments.description")}</p>
-            <p className="mb-2 font-semibold">{t("policies.panel.aboutAttachments.scopesTitle")}</p>
-            <ul className="mb-3 ml-2 list-inside list-disc space-y-1">
-              <li>
-                <Trans i18nKey="policies.panel.aboutAttachments.scopes.global" components={{ strong: <strong /> }} />
-              </li>
-              <li>
-                <Trans i18nKey="policies.panel.aboutAttachments.scopes.teams" components={{ strong: <strong /> }} />
-              </li>
-              <li>
-                <Trans i18nKey="policies.panel.aboutAttachments.scopes.keys" components={{ strong: <strong /> }} />
-              </li>
-              <li>
-                <Trans i18nKey="policies.panel.aboutAttachments.scopes.models" components={{ strong: <strong /> }} />
-              </li>
-              <li>
-                <Trans
-                  i18nKey="policies.panel.aboutAttachments.scopes.tags"
-                  components={{ strong: <strong />, code: <code /> }}
-                />
-              </li>
-            </ul>
-            <span hidden aria-hidden="true" />
-          </DismissibleAlert>
+
 
           <DismissibleAlert title={t("policies.panel.enterpriseNotice.title")} icon={<TriangleAlert />}>
             {t("policies.panel.enterpriseNotice.description")}

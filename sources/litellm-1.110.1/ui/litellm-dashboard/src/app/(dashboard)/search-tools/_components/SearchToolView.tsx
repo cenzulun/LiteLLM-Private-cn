@@ -49,7 +49,7 @@ export const SearchToolView: React.FC<SearchToolViewProps> = ({
             {t("searchTools.view.back")}
           </Button>
           <div className="flex items-center gap-1">
-            <h1 className="text-2xl font-semibold text-foreground">{searchTool.search_tool_name}</h1>
+            <h2 className="text-2xl font-semibold text-foreground">{searchTool.search_tool_name}</h2>
             <Button
               variant="ghost"
               size="icon-xs"

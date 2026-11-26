@@ -14,6 +14,22 @@
   .operations-workspace {
     background: color-mix(in oklab, var(--background) 94%, #2563eb);
   }
+  [data-slot="dashboard-content"] {
+    background: color-mix(in oklab, var(--background) 97%, #2563eb);
+  }
+  [data-slot="dashboard-content"] .operations-workspace {
+    background: transparent;
+  }
+  [data-slot="dashboard-content"] h2 {
+    font-size: 1rem;
+    line-height: 1.5rem;
+    font-weight: 600;
+  }
+  [data-slot="dashboard-content"] h3 {
+    font-size: .875rem;
+    line-height: 1.25rem;
+    font-weight: 600;
+  }
   .monitor-surface {
     border: 1px solid var(--border);
     border-radius: 12px;

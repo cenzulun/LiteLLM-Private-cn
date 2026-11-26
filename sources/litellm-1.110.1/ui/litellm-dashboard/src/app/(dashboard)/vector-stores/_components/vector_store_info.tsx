@@ -177,7 +177,7 @@ const VectorStoreInfoView: React.FC<VectorStoreInfoViewProps> = ({
           <ArrowLeft />
           {t("vectorStores.info.back")}
         </Button>
-        <h1 className="text-xl font-semibold">{t("vectorStores.info.notFound.title")}</h1>
+        <h2 className="text-xl font-semibold">{t("vectorStores.info.notFound.title")}</h2>
         <p className="text-sm text-muted-foreground">
           {t("vectorStores.info.notFound.description", { id: vectorStoreId })}
         </p>
@@ -201,9 +201,9 @@ const VectorStoreInfoView: React.FC<VectorStoreInfoViewProps> = ({
             {t("vectorStores.info.back")}
           </Button>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold">
+            <h2 className="text-xl font-semibold">
               {t("vectorStores.info.heading", { id: vectorStoreDetails.vector_store_id })}
-            </h1>
+            </h2>
             <StatusBadge
               tone={vectorStoreDetails.is_config ? "neutral" : "info"}
               label={
