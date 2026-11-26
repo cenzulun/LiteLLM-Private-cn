@@ -90,18 +90,22 @@ class DirectStore:
         return {**dict(row), 'current': decode(row['current']), 'raw': decode(row['raw'])}
 
     def history(self, identifier, fingerprint, key, minutes, interval=10):
+        return self.histories(identifier, fingerprint, [key], minutes, interval)[key]
+
+    def histories(self, identifier, fingerprint, keys, minutes, interval=10):
         with self.db() as db:
             rows = db.execute("SELECT at,metrics FROM direct_samples WHERE source_id=? AND fingerprint=? AND at>=? ORDER BY at", (identifier, fingerprint, time.time() - minutes * 60)).fetchall()
-        step = max(1, len(rows) // 600)
-        result = []
+        step = max(1, (len(rows) + 599) // 600)
+        result = {key: [] for key in keys}
         sampled = rows[::step]
         if rows and sampled[-1]['at'] != rows[-1]['at']:
             sampled.append(rows[-1])
         previous_at = None
         for row in sampled:
-            metric = next((item for item in decode(row['metrics'])['metrics'] if item['key'] == key), None)
-            if previous_at is not None and row['at'] - previous_at > max(30, interval * 3, minutes * 60 / 600 * 2):
-                result.append([previous_at + 1, None])
-            result.append([row['at'], metric['value'] if metric else None])
+            metrics = {item['key']: item['value'] for item in decode(row['metrics'])['metrics']}
+            for key in keys:
+                if previous_at is not None and row['at'] - previous_at > max(30, interval * 3, minutes * 60 / 600 * 2):
+                    result[key].append([previous_at + 1, None])
+                result[key].append([row['at'], metrics.get(key)])
             previous_at = row['at']
         return result

@@ -13152,6 +13152,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/private/monitor/direct/histories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Histories */
+        get: operations["histories_private_monitor_direct_histories_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/private/monitor/direct/history": {
         parameters: {
             query?: never;
@@ -30122,6 +30139,30 @@ export interface components {
              */
             status: "cancelled";
         };
+        /** CanvasEdge */
+        CanvasEdge: {
+            /**
+             * Kind
+             * @default fallback
+             * @enum {string}
+             */
+            kind: "fallback" | "context";
+            /** Source */
+            source: string;
+            /** Target */
+            target: string;
+        };
+        /** CanvasNode */
+        CanvasNode: {
+            /** Id */
+            id: string;
+            /** Model */
+            model: string;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+        };
         /** CapabilityCalibrationConfig */
         CapabilityCalibrationConfig: {
             /** Intercept */
@@ -46635,8 +46676,16 @@ export interface components {
                 [key: string]: string[];
             };
         };
+        /** RouteCanvas */
+        RouteCanvas: {
+            /** Edges */
+            edges: components["schemas"]["CanvasEdge"][];
+            /** Nodes */
+            nodes: components["schemas"]["CanvasNode"][];
+        };
         /** RoutePublication */
         RoutePublication: {
+            canvas?: components["schemas"]["RouteCanvas"] | null;
             /** Revision */
             revision: number;
             /** Yaml Text */
@@ -72760,6 +72809,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    histories_private_monitor_direct_histories_get: {
+        parameters: {
+            query: {
+                source_id: string;
+                keys: string;
+                minutes?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

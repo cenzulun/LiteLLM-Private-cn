@@ -187,6 +187,11 @@ class CollectorTests(unittest.IsolatedAsyncioTestCase):
             await service.collect(source, 7, store, httpx.MockTransport(lambda request: httpx.Response(200, text=metrics())))
             self.assertTrue(source_status(source, store)['fresh'])
             self.assertEqual(len(store.history(source['id'], fingerprint(source), 'engine_running', 60)), 1)
+            batch = store.histories(source['id'], fingerprint(source), ['engine_running', 'engine_waiting', 'missing'], 60)
+            self.assertEqual(batch['engine_running'], store.history(source['id'], fingerprint(source), 'engine_running', 60))
+            self.assertEqual(batch['engine_running'][0][1], 2)
+            self.assertEqual(batch['engine_waiting'][0][1], 3)
+            self.assertIsNone(batch['missing'][0][1])
 
 
 class Repository:
@@ -209,6 +214,17 @@ class DirectApiTests(unittest.TestCase):
         app.dependency_overrides[user_api_key_auth] = lambda: SimpleNamespace(user_role=self.role)
         app.dependency_overrides[configuration_repository] = lambda: self.repository
         self.client = TestClient(app)
+
+    def test_batch_history_reads_multiple_metrics_and_requires_registered_source(self):
+        self.client.put('/private/monitor/direct/configuration', json={'sources': [
+            {'id': 'batch', 'name': '批量趋势', 'url': 'http://engine:8000/metrics'}]})
+        with patch.object(DirectStore, 'histories', return_value={'engine_running': [[1, 2]], 'engine_waiting': [[1, 3]]}) as read:
+            result = self.client.get('/private/monitor/direct/histories', params={'source_id': 'batch', 'keys': 'engine_running,engine_waiting'})
+            self.assertEqual(result.status_code, 200, result.text)
+            self.assertEqual(result.json()['series']['engine_waiting'], [[1, 3]])
+            read.assert_called_once()
+        self.assertEqual(self.client.get('/private/monitor/direct/histories', params={'source_id': 'missing', 'keys': 'engine_running'}).status_code, 404)
+        self.assertEqual(self.client.get('/private/monitor/direct/histories', params={'source_id': 'batch', 'keys': ','}).status_code, 422)
 
     def test_credentials_are_encrypted_preserved_and_never_returned(self):
         with patch.dict(os.environ, {'LITELLM_SALT_KEY': 'test-only-salt'}):

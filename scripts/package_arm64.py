@@ -25,7 +25,7 @@ if validation_path.exists():
         assert release_validation[arch]['served_ui_matches'] is True
         assert release_validation[arch]['architecture'] == arch
     assert release_validation['amd64']['healthy'] is True
-    assert release_validation['backend_unchanged_from_verified_version']
+    assert release_validation.get('backend_unchanged_from_verified_version') or release_validation['arm64'].get('current_version_full_service_start_verified') is True
     assert release_validation['description']
 else:
     for name in [f'live-direct-{VERSION}.json', f'live-direct-arm64-{VERSION}.json']:
@@ -33,7 +33,7 @@ else:
         assert all(evidence.get(key) is True for key in ['background_sampling', 'runtime_source_matches',
             'served_ui_matches', 'healthy', 'restart_persistence_verified', 'failed_scrape_not_fresh', 'active_alert']), name
 OUT = OUTPUT_ROOT / f'release-{VERSION}-arm64'
-CONTEXT = ROOT / f'build-tools/runtime-context-{VERSION}'
+CONTEXT = Path(os.getenv('REALAI_RELEASE_CONTEXT', str(ROOT / f'build-tools/runtime-context-{VERSION}')))
 OUT.mkdir(exist_ok=True)
 TAGS = [f'realai/gateway:{VERSION}-arm64', 'realai/motor:3.2.0-runtime-arm64']
 
@@ -115,6 +115,9 @@ form_guide = (ROOT / 'build-tools/表单填写说明-1.0.12.md').read_text(encod
 copy(ROOT / 'docs/直接采集监控接入.md', OUT / '直接采集监控接入.md')
 copy(ROOT / f'docs/版本说明-{VERSION}.md', OUT / '本版更新说明.md')
 copy(ROOT / 'scripts/collect_vllm_metrics.sh', OUT / 'collect_vllm_metrics.sh')
+copy(ROOT / 'scripts/diagnose_redis.py', OUT / 'diagnose_redis.py')
+copy(ROOT / 'scripts/upgrade_gateway.sh', OUT / 'upgrade_gateway.sh')
+copy(ROOT / 'docs/升级后Redis鉴权排查.md', OUT / '升级后Redis鉴权排查.md')
 copy(ROOT / 'deploy/tests', OUT / 'tests')
 verification = OUT / 'verification'
 verification.mkdir(exist_ok=True)
@@ -123,13 +126,13 @@ for pattern in ['test-direct-monitor-validated.log', 'test-direct-routing.log', 
                 f'live-direct-arm64-{VERSION}.json', 'lint-monitor-layout-final.log', 'test-monitor-layout.log']:
     for source in (ROOT / 'build-tools').glob(pattern):
         copy(source, verification / source.name)
-for pattern in [f'release-validation-{VERSION}.json', f'test-monitor-scope-{VERSION}.log', f'lint-monitor-scope-{VERSION}.log',
+for pattern in [f'release-validation-{VERSION}.json', f'test-ui*-{VERSION}.log', f'test-trends-final-{VERSION}.log',
+                f'test-arm64-canvas-{VERSION}.log', f'live-canvas-{VERSION}.json', f'browser-monitor-{VERSION}.log',
+                f'lint-canvas-final-{VERSION}.log', f'design-monitor-{VERSION}.json',
+                f'test-monitor-scope-{VERSION}.log', f'lint-monitor-scope-{VERSION}.log',
                 f'test-resource-toolbar-{VERSION}.log', f'lint-resource-toolbar-{VERSION}.log']:
     for source in (ROOT / 'build-tools').glob(pattern):
         copy(source, verification / source.name)
-screenshots = ROOT / f'.impeccable/review/direct-{VERSION}'
-if screenshots.exists():
-    copy(screenshots, verification / 'screenshots')
 images = []
 details = {}
 for tag in TAGS:

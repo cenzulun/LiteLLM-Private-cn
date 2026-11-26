@@ -114,6 +114,21 @@ class EventJournal:
             finally:
                 db.close()
 
+    def statistics(self, model="", deployment="", minutes=60):
+        with self._lock:
+            db = self._connect()
+            try:
+                rows = db.execute("""SELECT model, deployment, COUNT(*) AS completed,
+                    SUM(outcome='success') AS successes, SUM(outcome='failure') AS failures,
+                    SUM(kind='retry') AS retries, SUM(kind='fallback') AS fallbacks,
+                    AVG(duration) AS average_duration
+                    FROM routing_events WHERE created_at>=? AND (?='' OR model=? OR requested_model=?)
+                    AND (?='' OR deployment=?) GROUP BY model,deployment ORDER BY completed DESC""",
+                    (time.time() - minutes * 60, model, model, model, deployment, deployment))
+                return [dict(row) for row in rows]
+            finally:
+                db.close()
+
 
 class RoutingTelemetry(CustomLogger):
     def __init__(self, registry=None, journal=None):

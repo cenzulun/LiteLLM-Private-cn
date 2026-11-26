@@ -25,6 +25,7 @@ export default function DirectConfiguration({
 }) {
   const [internalOpen, setOpen] = useState(false);
   const open = externalOpen ?? internalOpen;
+  const [selectedId, setSelectedId] = useState("");
   const [draft, setDraft] = useState<Settings | null>(null);
   const [message, setMessage] = useState("");
   const [failed, setFailed] = useState(false);
@@ -48,6 +49,19 @@ export default function DirectConfiguration({
     retry: false,
   });
   const settings = draft ?? query.data ?? { sources: [], retention_days: 7, routing_enabled: false };
+  const active = settings.sources.find((source) => source.id === selectedId) ?? settings.sources[0];
+  const add = () => {
+    const source = createSource();
+    setDraft({ ...settings, sources: [...settings.sources, source] });
+    setSelectedId(source.id);
+    setMessage("");
+  };
+  const remove = () => {
+    if (!active) return;
+    setDraft({ ...settings, sources: settings.sources.filter((source) => source.id !== active.id) });
+    setSelectedId("");
+    setMessage("已从草稿移除，保存后生效。");
+  };
   const update = (id: string, change: Partial<Source>) => {
     setDraft({
       ...settings,
@@ -81,7 +95,7 @@ export default function DirectConfiguration({
             String(item.queryKey[0]).startsWith("direct-monitor") ||
             ["routing-dashboard", "private-routing-state"].includes(String(item.queryKey[0])),
         });
-        setMessage("配置已保存。后台持续采集，关闭页面后仍会运行；密钥加密保存，读取时不返回原文。");
+        setMessage("配置已保存，后台持续采集。");
       }
     } catch (error) {
       setFailed(true);
@@ -96,7 +110,7 @@ export default function DirectConfiguration({
   };
   if (externalOpen === false) return null;
   return (
-    <section className="space-y-4 rounded-xl border p-5" aria-label="源采集配置">
+    <section className="monitor-surface space-y-4 p-5" aria-label="源采集配置">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-semibold">源采集配置</h2>
@@ -124,41 +138,62 @@ export default function DirectConfiguration({
             void submit();
           }}
         >
-          <div className="flex flex-wrap items-center gap-5">
-            <label className={fieldClass}>
-              历史保留天数
-              <Input
-                type="number"
-                min={1}
-                max={30}
-                value={settings.retention_days}
-                disabled={!editable || busy}
-                onChange={(event) => setDraft({ ...settings, retention_days: Number(event.target.value) })}
-              />
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <label className="grid min-w-0 flex-1 gap-2 text-sm">
+              选择采集源
+              <select
+                className={selectClass}
+                value={active?.id ?? ""}
+                onChange={(event) => setSelectedId(event.target.value)}
+              >
+                {!active && <option value="">尚无采集源，请点击新增</option>}
+                {settings.sources.map((source, index) => (
+                  <option key={source.id} value={source.id}>
+                    {source.name || `未命名采集源 ${index + 1}`}
+                  </option>
+                ))}
+              </select>
             </label>
-            <label className="flex max-w-xl items-start gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="mt-1"
-                checked={settings.routing_enabled}
-                disabled={!editable || busy}
-                onChange={(event) => setDraft({ ...settings, routing_enabled: event.target.checked })}
-              />
-              <span>
-                将源采集的运行与排队压力用于实例选择
-                <p className="mt-1 text-xs text-muted-foreground">
-                  需绑定独立模型部署，并使用历史时延路由。数据异常或无法匹配时回退到历史时延，不影响模型调用。
-                </p>
-              </span>
-            </label>
+            <span className="pb-2 text-sm text-muted-foreground">
+              共 {settings.sources.length} 个采集源 · 每次编辑一个
+            </span>
           </div>
-          <p className="text-xs text-muted-foreground">
-            配置保存在数据库，历史保存在持久化卷。默认保留七天，总采样上限二十五万条，达到上限时淘汰最早记录；多主机部署需单独规划采集存储。
-          </p>
-          {settings.sources.map((source, index) => (
+          <details>
+            <summary className="cursor-pointer text-sm font-medium">采集与路由全局设置</summary>
+            <div className="mt-4 flex flex-wrap items-center gap-5">
+              <label className={fieldClass}>
+                历史保留天数
+                <Input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={settings.retention_days}
+                  disabled={!editable || busy}
+                  onChange={(event) => setDraft({ ...settings, retention_days: Number(event.target.value) })}
+                />
+              </label>
+              <label className="flex max-w-xl items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={settings.routing_enabled}
+                  disabled={!editable || busy}
+                  onChange={(event) => setDraft({ ...settings, routing_enabled: event.target.checked })}
+                />
+                <span>
+                  将源采集的运行与排队压力用于实例选择
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    需绑定独立模型部署，并使用历史时延路由。数据异常或无法匹配时回退到历史时延，不影响模型调用。
+                  </p>
+                </span>
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground">配置与密钥加密存储在数据库，历史存储在持久化卷。</p>
+          </details>
+          {(active ? [active] : []).map((source) => (
             <fieldset className="space-y-4 border-t pt-5" key={source.id} disabled={!editable || busy}>
               <legend className="px-1 text-sm font-semibold">
-                采集源 {index + 1}
+                当前采集源
                 {source.name ? ` · ${source.name}` : ""}
               </legend>
               <div className="grid gap-4 md:grid-cols-2">
@@ -236,40 +271,45 @@ export default function DirectConfiguration({
                     <span className="text-xs text-destructive">部署列表读取失败，请刷新后重新选择。</span>
                   )}
                 </label>
-                <label className={fieldClass}>
-                  模型标签过滤（选填）
-                  <Input
-                    value={source.model_name}
-                    onChange={(event) => update(source.id, { model_name: event.target.value })}
-                    placeholder="填写指标中 model_name 的完整原值"
-                  />
-                  <span className="text-xs text-muted-foreground">
-                    单个指标接口包含多个模型时，用此项限定采集范围。
-                  </span>
-                </label>
-                <label className={fieldClass}>
-                  采集周期（秒）
-                  <Input
-                    required
-                    type="number"
-                    min={5}
-                    max={300}
-                    value={source.interval_seconds}
-                    onChange={(event) => update(source.id, { interval_seconds: Number(event.target.value) })}
-                  />
-                </label>
-                <label className={fieldClass}>
-                  连接超时（秒）
-                  <Input
-                    required
-                    type="number"
-                    min={2}
-                    max={20}
-                    value={source.timeout_seconds}
-                    onChange={(event) => update(source.id, { timeout_seconds: Number(event.target.value) })}
-                  />
-                </label>
               </div>
+              <details>
+                <summary className="cursor-pointer text-sm">采集周期与高级选项</summary>
+                <div className="mt-3 grid gap-4 md:grid-cols-3">
+                  <label className={fieldClass}>
+                    模型标签过滤（选填）
+                    <Input
+                      value={source.model_name}
+                      onChange={(event) => update(source.id, { model_name: event.target.value })}
+                      placeholder="填写指标中 model_name 的完整原值"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      单个指标接口包含多个模型时，用此项限定采集范围。
+                    </span>
+                  </label>
+                  <label className={fieldClass}>
+                    采集周期（秒）
+                    <Input
+                      required
+                      type="number"
+                      min={5}
+                      max={300}
+                      value={source.interval_seconds}
+                      onChange={(event) => update(source.id, { interval_seconds: Number(event.target.value) })}
+                    />
+                  </label>
+                  <label className={fieldClass}>
+                    连接超时（秒）
+                    <Input
+                      required
+                      type="number"
+                      min={2}
+                      max={20}
+                      value={source.timeout_seconds}
+                      onChange={(event) => update(source.id, { timeout_seconds: Number(event.target.value) })}
+                    />
+                  </label>
+                </div>
+              </details>
               <details>
                 <summary className="cursor-pointer text-sm">站内告警阈值</summary>
                 <div className="mt-3 grid gap-4 md:grid-cols-3">
@@ -337,37 +377,22 @@ export default function DirectConfiguration({
                   </label>
                 )}
               </div>
-              {editable && (
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => void submit(source)}
-                    disabled={busy || !source.url || !source.name}
-                  >
-                    测试指标连接
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() =>
-                      setDraft({ ...settings, sources: settings.sources.filter((row) => row.id !== source.id) })
-                    }
-                  >
-                    移除采集源
-                  </Button>
-                </div>
-              )}
             </fieldset>
           ))}
           {editable ? (
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center gap-3 border-t pt-4" aria-label="采集配置操作">
               <Button
                 type="button"
                 variant="outline"
-                disabled={busy || settings.sources.length >= 100}
-                onClick={() => setDraft({ ...settings, sources: [...settings.sources, createSource()] })}
+                disabled={busy || !active?.url || !active?.name}
+                onClick={() => active && void submit(active)}
               >
+                测试指标连接
+              </Button>
+              <Button type="button" variant="outline" disabled={busy || !active} onClick={remove}>
+                移除采集源
+              </Button>
+              <Button type="button" variant="outline" disabled={busy || settings.sources.length >= 100} onClick={add}>
                 新增采集源
               </Button>
               <Button type="submit" disabled={busy}>

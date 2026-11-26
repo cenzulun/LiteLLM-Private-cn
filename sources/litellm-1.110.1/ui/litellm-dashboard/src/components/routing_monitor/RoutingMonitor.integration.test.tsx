@@ -22,7 +22,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe("路由完整监控页面", () => {
   it("distinguishes missing collection from zero activity and does not invent health", async () => {
     renderWithProviders(<RoutingMonitor />);
-    expect(await screen.findByRole("heading", { name: "尚未配置监控源" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "路由策略" })).toBeInTheDocument();
     const table = screen.getByRole("table", { name: "各模型实例的调用分配、健康、排队与延迟" });
     expect(within(table).getAllByText("尚未探测")).toHaveLength(2);
     expect(within(table).getAllByText("0 次")).toHaveLength(2);

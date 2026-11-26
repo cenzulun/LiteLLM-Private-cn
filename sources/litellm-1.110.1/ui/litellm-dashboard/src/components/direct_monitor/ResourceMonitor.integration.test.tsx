@@ -37,8 +37,8 @@ describe("资源页配置入口", () => {
     expect(within(toolbar).getByRole("heading", { name: "引擎与昇腾资源" })).toBeVisible();
     expect(screen.queryByRole("heading", { name: "源采集配置" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Prometheus 接入配置" })).not.toBeInTheDocument();
-    expect(await screen.findByText(/尚未配置采集源/)).toBeVisible();
-    expect(screen.getByRole("heading", { name: "监控源状态" })).toBeVisible();
+    expect(await screen.findByText(/尚未配置引擎或昇腾设备采集源/)).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "监控源状态" })).not.toBeInTheDocument();
     fireEvent.click(within(toolbar).getByRole("button", { name: "配置源采集" }));
     expect(await screen.findByRole("heading", { name: "源采集配置" })).toBeVisible();
     fireEvent.click(within(toolbar).getByRole("button", { name: "收起源采集" }));

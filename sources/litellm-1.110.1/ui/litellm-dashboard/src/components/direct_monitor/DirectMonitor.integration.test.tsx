@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, renderWithProviders, screen, testQueryClient } from "../../../tests/test-utils";
+import { fireEvent, renderWithProviders, screen, testQueryClient, within } from "../../../tests/test-utils";
 import DirectConfiguration from "./DirectConfiguration";
 import DirectMetricsPanel from "./DirectMetricsPanel";
 
@@ -121,9 +121,9 @@ describe("源采集监控", () => {
     expect((await screen.findAllByText("采集正常")).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/当前窗口无新增样本或正在预热/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("0").length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: "源采集活动告警" })).toBeVisible();
-    expect(screen.getByLabelText("趋势指标")).toBeVisible();
-    expect(screen.getByText("当前时间范围暂无有效趋势数据。")).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "源采集活动告警" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "趋势指标" })).toBeVisible();
+    expect(await screen.findAllByText("当前时间范围暂无有效趋势数据。")).toHaveLength(2);
     expect(screen.getAllByText("首令牌时延（九十五分位）").length).toBeGreaterThan(1);
     expect(screen.queryByRole("img", { name: "源采集指标趋势" })).not.toBeInTheDocument();
     expect(screen.getByText(/此面板不会与 Prometheus 数值相加/)).toBeInTheDocument();
@@ -134,7 +134,40 @@ describe("源采集监控", () => {
       vi.fn(async () => Response.json({ sources: [], alerts: [], collector_error: null })),
     );
     renderWithProviders(<DirectMetricsPanel accessToken="test-only" />);
-    expect(await screen.findByText(/尚未配置采集源/)).toBeVisible();
-    expect(screen.getByRole("heading", { name: "源采集监控" })).toBeVisible();
+    expect(await screen.findByText(/尚未配置推理引擎采集源/)).toBeVisible();
+    expect(screen.getByRole("heading", { name: "推理实例监控" })).toBeVisible();
+  });
+
+  it("新增时仅展开新源，已有源被保留且操作位于同一行", async () => {
+    renderWithProviders(<DirectConfiguration accessToken="test-only" userRole="Admin" externalOpen />);
+    expect(await screen.findByLabelText(/完整指标地址/)).toHaveValue("http://148.1.2.3:8000/metrics");
+    const toolbar = screen.getByLabelText("采集配置操作");
+    expect(
+      within(toolbar)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["测试指标连接", "移除采集源", "新增采集源", "保存采集配置"]);
+    fireEvent.click(within(toolbar).getByRole("button", { name: "新增采集源" }));
+    expect(screen.getAllByLabelText(/完整指标地址/)).toHaveLength(1);
+    expect(screen.getByLabelText(/完整指标地址/)).toHaveValue("");
+    fireEvent.change(screen.getByLabelText("采集名称"), { target: { value: "新引擎" } });
+    fireEvent.change(screen.getByLabelText(/完整指标地址/), { target: { value: "http://148.1.2.4:8000/metrics" } });
+    fireEvent.click(within(toolbar).getByRole("button", { name: "保存采集配置" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("配置已保存");
+    expect(saved).toEqual(
+      expect.objectContaining({
+        sources: [
+          expect.objectContaining({ id: "source-1" }),
+          expect.objectContaining({ name: "新引擎", url: "http://148.1.2.4:8000/metrics" }),
+        ],
+      }),
+    );
+  });
+
+  it("资源模式不重复展示推理指标和实例总览", async () => {
+    renderWithProviders(<DirectMetricsPanel accessToken="test-only" mode="resources" />);
+    expect(await screen.findByRole("heading", { name: "引擎与设备指标" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "采集实例与模型" })).not.toBeInTheDocument();
+    expect(screen.queryByText("输出令牌速率")).not.toBeInTheDocument();
   });
 });

@@ -3,7 +3,9 @@
 import { useTeams } from "@/app/(dashboard)/hooks/teams/useTeams";
 import { useUISettings } from "@/app/(dashboard)/hooks/uiSettings/useUISettings";
 import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
-import { internalUserRoles } from "@/utils/roles";
+import { all_admin_roles, internalUserRoles } from "@/utils/roles";
+import RouteCanvas from "@/components/routing_canvas/RouteCanvas";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { autoRouterCreationScope } from "@/utils/modelPermissions";
 
 import { AutoRoutersPanel } from "../components/AutoRouters/AutoRoutersPanel";
@@ -28,13 +30,26 @@ export default function AutoRoutersTabPanel() {
   );
 
   return (
-    <AutoRoutersPanel
-      accessToken={accessToken}
-      userRole={userRole ?? ""}
-      userID={userID ?? null}
-      isViewOnly={isViewOnly}
-      teams={teams ?? null}
-      createScope={scope}
-    />
+    <Tabs defaultValue={all_admin_roles.includes(userRole ?? "") ? "canvas" : "classification"}>
+      <TabsList>
+        <TabsTrigger value="canvas" disabled={!all_admin_roles.includes(userRole ?? "")}>
+          路由画布
+        </TabsTrigger>
+        <TabsTrigger value="classification">模型分类路由</TabsTrigger>
+      </TabsList>
+      <TabsContent value="canvas" className="pt-4">
+        <RouteCanvas accessToken={accessToken} userRole={isViewOnly ? "Admin Viewer" : userRole ?? ""} />
+      </TabsContent>
+      <TabsContent value="classification" className="pt-4">
+        <AutoRoutersPanel
+          accessToken={accessToken}
+          userRole={userRole ?? ""}
+          userID={userID ?? null}
+          isViewOnly={isViewOnly}
+          teams={teams ?? null}
+          createScope={scope}
+        />
+      </TabsContent>
+    </Tabs>
   );
 }

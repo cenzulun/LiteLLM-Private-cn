@@ -14,6 +14,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, field_validator, model_validator
 
 from realai_private.monitor_config import Actor, Repository, require_admin
+from realai_private.route_canvas import RouteCanvas, validate_canvas
 
 CONFIG_KEY = "private_online_router_configuration"
 STRATEGIES = Literal["simple-shuffle", "least-busy", "latency-based-routing", "usage-based-routing-v2"]
@@ -73,6 +74,7 @@ class RoutePublication(BaseModel):
     model_config = ConfigDict(extra="forbid")
     yaml_text: str = Field(max_length=64000)
     revision: StrictInt = Field(ge=0)
+    canvas: RouteCanvas | None = None
 
 
 class UniqueLoader(yaml.SafeLoader):
@@ -202,6 +204,7 @@ def route_configuration_router():
         settings = RouteSettings.model_validate(value["settings"]) if value else baseline_settings()
         await synchronizer.refresh(force=True)
         return {"revision": value["revision"] if value else 0, "yaml_text": yaml.safe_dump({"router_settings": settings.model_dump()}, allow_unicode=True, sort_keys=False),
+                "settings": settings.model_dump(), "canvas": value.get("canvas") if value else None,
                 "source": "数据库在线配置" if value else "部署配置文件", "applied_revision": synchronizer.revision,
                 "sync_error": synchronizer.last_error, "previous_available": bool(value and value.get("previous")),
                 "message": "仅编辑可热更新的路由参数。模型与密钥、数据库、监听端口及缓存连接由各自页面或部署环境管理。"}
@@ -212,6 +215,10 @@ def route_configuration_router():
         try:
             settings = parse_document(payload.yaml_text)
             check_models(settings)
+            if payload.canvas is not None:
+                active = runtime_settings()
+                names = {row["model_name"] for row in active.registry().deployments()} if active is not None else set()
+                validate_canvas(payload.canvas, settings, names)
             validate_runtime(settings)
         except Exception:
             raise HTTPException(422, "配置校验失败：请检查字段、范围、备用模型和缩进。仅支持页面列出的可热更新参数。") from None
@@ -227,7 +234,9 @@ def route_configuration_router():
         if payload.revision != revision:
             raise HTTPException(409, "配置已被其他管理员修改，请重新加载后编辑")
         settings = parse_document(payload.yaml_text)
-        value = {"revision": revision + 1, "settings": settings.model_dump(), "previous": old["settings"] if old else baseline_settings().model_dump(), "updated_by": actor.user_id, "updated_at": int(time.time())}
+        value = {"revision": revision + 1, "settings": settings.model_dump(), "canvas": payload.canvas.model_dump() if payload.canvas else None,
+                 "previous": old["settings"] if old else baseline_settings().model_dump(), "previous_canvas": old.get("canvas") if old else None,
+                 "updated_by": actor.user_id, "updated_at": int(time.time())}
         if not await repository.set_param_if_revision(CONFIG_KEY, value, revision):
             raise HTTPException(409, "配置已更新，请重新加载后编辑")
         synchronizer.row = value
@@ -242,6 +251,6 @@ def route_configuration_router():
         row = await repository.get_param(CONFIG_KEY)
         if not row or not row.param_value.get("previous"):
             raise HTTPException(409, "暂无可回退的路由配置")
-        return await publish(RoutePublication(revision=payload.revision, yaml_text=yaml.safe_dump({"router_settings": row.param_value["previous"]})), actor, repository)
+        return await publish(RoutePublication(revision=payload.revision, yaml_text=yaml.safe_dump({"router_settings": row.param_value["previous"]}), canvas=row.param_value.get("previous_canvas")), actor, repository)
 
     return router

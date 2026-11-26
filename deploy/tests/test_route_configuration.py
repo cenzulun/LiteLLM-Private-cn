@@ -68,6 +68,39 @@ class RouteConfigurationTests(unittest.TestCase):
         self.assertEqual(self.repository.value["revision"],2)
         self.assertEqual(self.router.settings().as_dict()["timeout"],180)
 
+    def test_canvas_saved_and_restored_with_revision(self):
+        payload = self.payload()
+        payload["canvas"] = {"nodes": [{"id": "qwen", "model": "Qwen-Test", "x": 450, "y": 80}], "edges": []}
+        result = self.client.put("/private/routing/configuration", json=payload)
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(self.repository.value["canvas"], payload["canvas"])
+        second = self.payload(revision=1, timeout=120)
+        self.assertEqual(self.client.put("/private/routing/configuration", json=second).status_code, 200)
+        result = self.client.post("/private/routing/rollback", json=self.payload(revision=2))
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(self.repository.value["canvas"], payload["canvas"])
+
+    def test_canvas_rejects_unknown_model_even_without_fallbacks(self):
+        payload = self.payload()
+        payload["canvas"] = {"nodes": [{"id": "unknown", "model": "unknown", "x": 0, "y": 0}], "edges": []}
+        self.assertEqual(self.client.post("/private/routing/preview", json=payload).status_code, 422)
+        self.assertIsNone(self.repository.value)
+
+    def test_published_canvas_drives_actual_fallback_without_restarting_router(self):
+        active = Router(model_list=[
+            {"model_name": "Qwen-Test", "litellm_params": {"model": "openai/qwen", "api_key": "test-only", "mock_response": "primary"}},
+            {"model_name": "GLM-Test", "litellm_params": {"model": "openai/glm", "api_key": "test-only", "mock_response": "fallback-result"}},
+        ], routing_strategy="latency-based-routing", num_retries=0)
+        payload = self.payload(num_retries=0, fallbacks=[{"Qwen-Test": ["GLM-Test"]}])
+        payload["canvas"] = {"nodes": [{"id": name, "model": model, "x": 450, "y": index * 180}
+                              for index, (name, model) in enumerate((("q", "Qwen-Test"), ("g", "GLM-Test")))],
+                             "edges": [{"source": "q", "target": "g", "kind": "fallback"}]}
+        with patch("realai_private.route_config.runtime_settings", return_value=active):
+            result = self.client.put("/private/routing/configuration", json=payload)
+            self.assertEqual(result.status_code, 200, result.text)
+            response = asyncio.run(active.acompletion(model="Qwen-Test", messages=[{"role": "user", "content": "test"}], mock_testing_fallbacks=True))
+        self.assertEqual(response.choices[0].message.content, "fallback-result")
+
     def test_read_only_admin_cannot_publish_or_validate(self):
         self.role=LitellmUserRoles.PROXY_ADMIN_VIEW_ONLY
         for path in ("/preview","/rollback"):

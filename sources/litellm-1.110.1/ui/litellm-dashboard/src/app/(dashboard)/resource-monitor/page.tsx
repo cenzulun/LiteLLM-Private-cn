@@ -95,7 +95,7 @@ const identity = (labels: Record<string, string>) =>
     .filter((value) => value !== undefined && value !== "")
     .join(" · ") || "全局";
 export default function ResourceMonitor() {
-  const { accessToken, userRole, isLoading, isAuthorized } = useAuthorized();
+  const { accessToken, userRole, isViewOnly, isLoading, isAuthorized } = useAuthorized();
   const query = useQuery({
     queryKey: ["private-resource-monitor", accessToken],
     enabled: Boolean(accessToken && isAuthorized),
@@ -111,12 +111,12 @@ export default function ResourceMonitor() {
     <Page>
       <MonitorConfiguration
         accessToken={accessToken}
-        userRole={userRole}
+        userRole={isViewOnly ? "Admin Viewer" : userRole}
         title="引擎与昇腾资源"
         onRefresh={() => void query.refetch()}
         refreshing={query.isFetching}
       />
-      <DirectMetricsPanel accessToken={accessToken} />
+      <DirectMetricsPanel accessToken={accessToken} mode="resources" />
       {(() => {
         if (query.isPending) {
           return <p>正在加载资源状态…</p>;
@@ -128,6 +128,7 @@ export default function ResourceMonitor() {
             </div>
           );
         }
+        if (query.data?.state === "unconfigured") return null;
         return (
           <>
             <section className="rounded-xl border p-5">

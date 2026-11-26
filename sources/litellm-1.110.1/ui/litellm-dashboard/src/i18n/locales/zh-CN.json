@@ -18174,7 +18174,7 @@
     },
     "autoSetup": {
       "goals": {
-        "cheapest": "费用优先",
+        "cheapest": "轻量模型优先",
         "balanced": "均衡",
         "quality": "质量优先"
       },

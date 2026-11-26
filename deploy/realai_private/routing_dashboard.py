@@ -200,8 +200,10 @@ def routing_dashboard_router():
                 if metric["state"] != "error":
                     metric["state"] = "available" if metric["series"] else "empty"
         events_error = None
+        journal_summary = []
         try:
             events = await asyncio.to_thread(EventJournal().read, model, deployment, minutes)
+            journal_summary = await asyncio.to_thread(EventJournal().statistics, model, deployment, minutes)
         except (OSError, ValueError, RuntimeError, sqlite3.Error):
             events = []
             events_error = "近期路由记录读取失败，请检查持久化目录"
@@ -223,6 +225,7 @@ def routing_dashboard_router():
             row["traffic_share"] = 100*count/total_attempts if count is not None and total_attempts else None
             observed = next((event for event in events if event["deployment"] == identifier), None)
             row["latest_event"] = observed
+            row["local_activity"] = next((item for item in journal_summary if item["deployment"] == identifier), None)
             row["latest_failure"] = next((event for event in events if event["deployment"] == identifier and event["failure"]), None)
             pressure = unique_pressure(strategy._scores, row["labels"], [item["labels"] for item in inventory]) if strategy else None
             row["routing_pressure"] = pressure
@@ -232,7 +235,7 @@ def routing_dashboard_router():
                 "models": sorted({row["model"] for row in inventory}),
                 "deployments": [{"model": row["model"], "deployment": row["deployment"], "endpoint": row["endpoint"]} for row in inventory],
                 "instances": [{key: value for key, value in row.items() if key not in ("raw", "labels")} for row in selected],
-                "events": events, "events_error": events_error, "health_error": health_error,
+                "events": events, "events_error": events_error, "health_error": health_error, "journal_summary": journal_summary,
                 **alerts,
                 "metric_source_at": getattr(strategy, "last_sample_at", None), "metric_sample_count": getattr(strategy, "sample_count", 0),
                 "scope": "当前筛选范围内的上游调用尝试；客户端请求按模型统计。五分钟速率与分位时延，次数与令牌累计使用所选时间范围。",

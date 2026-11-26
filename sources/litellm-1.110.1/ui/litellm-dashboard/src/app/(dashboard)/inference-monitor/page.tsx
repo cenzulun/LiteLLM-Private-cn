@@ -40,7 +40,7 @@ const number = new Intl.NumberFormat("zh-CN", {
 const displayValue = (value: string): string =>
   Number.isFinite(Number(value)) ? number.format(Number(value)) : "暂无数据";
 export default function InferenceMonitor() {
-  const { accessToken, userRole, isLoading, isAuthorized } = useAuthorized();
+  const { accessToken, userRole, isViewOnly, isLoading, isAuthorized } = useAuthorized();
   const snapshot = useQuery({
     queryKey: ["private-monitor", accessToken],
     enabled: Boolean(accessToken && isAuthorized),
@@ -60,7 +60,7 @@ export default function InferenceMonitor() {
     <Page>
       <MonitorConfiguration
         accessToken={accessToken}
-        userRole={userRole}
+        userRole={isViewOnly ? "Admin Viewer" : userRole}
         title="推理监控"
         onRefresh={() => void snapshot.refetch()}
         refreshing={snapshot.isFetching}

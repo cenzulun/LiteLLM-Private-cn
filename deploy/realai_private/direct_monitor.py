@@ -348,4 +348,18 @@ def direct_monitor_router():
         points = await asyncio.to_thread(DirectStore().history, source_id, fingerprint(source), key, minutes, source["interval_seconds"])
         return {"points": points, "message": "历史从启用采集后积累，空值表示未采到有效样本"}
 
+    @router.get("/histories")
+    async def histories(actor: Actor, repository: Repository, source_id: str,
+                        keys: str = Query(..., max_length=12000), minutes: int = Query(60, ge=1, le=43200)):
+        require_admin(actor)
+        selected = tuple(dict.fromkeys(keys.split(",")))
+        if not selected or len(selected) > 150 or any(not key or len(key) > 80 for key in selected):
+            raise HTTPException(422, "请选择一至一百五十个有效指标")
+        document = await read_settings(repository)
+        source = next((row for row in document["sources"] if row["id"] == source_id), None)
+        if source is None:
+            raise HTTPException(404, "采集源不存在")
+        series = await asyncio.to_thread(DirectStore().histories, source_id, fingerprint(source), selected, minutes, source["interval_seconds"])
+        return {"series": series, "message": "历史从启用采集后积累，空值表示未采到有效样本"}
+
     return router
