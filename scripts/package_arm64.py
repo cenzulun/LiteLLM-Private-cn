@@ -115,7 +115,8 @@ for tag in TAGS:
     details[tag] = row
     images.append({'tag': tag, 'architecture': 'arm64', 'id': row['Id']})
 image_path = OUT / 'all-images-arm64.tar'
-subprocess.run(['docker', 'save', '-o', str(image_path), *TAGS], check=True)
+if not image_path.exists():
+    subprocess.run(['docker', 'save', '-o', str(image_path), *TAGS], check=True)
 with tarfile.open(image_path) as archive:
     manifests = json.load(archive.extractfile('manifest.json'))
     assert {tag for item in manifests for tag in item.get('RepoTags', [])} == set(TAGS)
