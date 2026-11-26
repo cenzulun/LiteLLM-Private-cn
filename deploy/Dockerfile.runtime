@@ -11,5 +11,6 @@ COPY realai_private /app/realai_private
 COPY sitecustomize.py /app/sitecustomize.py
 COPY patch_runtime.py /app/patch_runtime.py
 COPY metadata-zh.json /app/realai_private/metadata-zh.json
+RUN python -c "import shutil; shutil.rmtree('/app/ui-out', ignore_errors=True)"
 COPY ui-out /app/ui-out
 RUN python /app/patch_runtime.py

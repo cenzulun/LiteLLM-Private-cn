@@ -23,7 +23,8 @@ def main():
         subprocess.run([npm, "run", "build", "--", "--webpack"], cwd=ui, env=env, check=True)
     if not (ui / "out/index.html").is_file():
         raise SystemExit("缺少前端导出目录，请先完成前端构建")
-    context = root / "build-tools/form-runtime-context-1.0.12"
+    version = (root / "VERSION").read_text(encoding="utf8").strip()
+    context = root / f"build-tools/runtime-context-{version}"
     context.mkdir(parents=True, exist_ok=True)
     for name in ["realai_private", "sitecustomize.py", "patch_runtime.py", "metadata-zh.json", "Dockerfile.runtime"]:
         source = root / "deploy" / name
@@ -31,9 +32,10 @@ def main():
             shutil.copytree(source, context / name, dirs_exist_ok=True, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".env"))
         else:
             shutil.copy2(source, context / name)
-    shutil.copytree(ui / "out", context / "ui-out", dirs_exist_ok=True)
+    if (context / "ui-out").exists():
+        shutil.rmtree(context / "ui-out")
+    shutil.copytree(ui / "out", context / "ui-out")
     (context / ".dockerignore").write_text("__pycache__\n*.pyc\n.env\n", encoding="utf8")
-    version = (root / "VERSION").read_text(encoding="utf8").strip()
     tag = f"realai/gateway:{version}-{args.platform.split('/')[1]}"
     command = ["docker", "buildx", "build", "--platform", args.platform, "-f", str(context / "Dockerfile.runtime"), "-t", tag, "--load"]
     if args.base_image:

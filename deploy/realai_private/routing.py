@@ -18,6 +18,9 @@ def _endpoint_labels(deployment: Mapping[str, object]) -> frozenset[str]:
         return frozenset()
     metadata: Final = params.get("metadata")
     values: list[str] = []
+    info = deployment.get("model_info")
+    if isinstance(info, Mapping) and info.get("id"):
+        values.append("deployment:" + str(info["id"]))
     if isinstance(metadata, Mapping):
         for key in ("route_instance", "instance", "npu_instance", "pod_name", "node"):
             value = metadata.get(key)
@@ -94,6 +97,18 @@ class MetricAwareRoutingStrategy:
         async with self._lock:
             now = time.monotonic()
             if now - self._last_refresh < self._refresh_seconds:
+                return
+            from realai_private.direct_monitor import collector, pressure_scores
+            if collector.settings and collector.settings.get("routing_enabled"):
+                self._scores = await asyncio.to_thread(pressure_scores, collector.settings)
+                self.last_sample_at = time.time() if self._scores else None
+                self.sample_count = len(self._scores)
+                self._last_refresh = now
+                return
+            prometheus_enabled = os.getenv("REALAI_METRIC_ROUTING_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
+            if not self._prometheus_url or not prometheus_enabled:
+                self._scores = {}
+                self._last_refresh = now
                 return
             try:
                 async with httpx.AsyncClient(timeout=3, trust_env=False, follow_redirects=False) as client:
@@ -184,7 +199,9 @@ class MetricAwareRoutingStrategy:
 def install_metric_routing(router: object) -> bool:
     enabled: Final = os.getenv("REALAI_METRIC_ROUTING_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
     prometheus_url: Final = os.getenv("PROMETHEUS_URL", "").strip().rstrip("/")
-    if not enabled or not prometheus_url:
+    from realai_private.direct_monitor import collector
+    direct_enabled = bool(collector.settings and collector.settings.get("routing_enabled"))
+    if not direct_enabled and (not enabled or not prometheus_url):
         return False
     existing = getattr(router, "_realai_metric_strategy", None)
     core = getattr(router, "_core", router)

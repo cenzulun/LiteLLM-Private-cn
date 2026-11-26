@@ -308,6 +308,7 @@ async def install_optional_metric_routing() -> None:
 
 
 def install(app: object) -> None:
+    from realai_private.direct_monitor import direct_monitor_router, install_collector
     from realai_private.monitor import monitor_router
     from realai_private.route_config import route_configuration_router
     from realai_private.fleet import fleet_router
@@ -320,6 +321,8 @@ def install(app: object) -> None:
     app.include_router(fleet_router())
     app.include_router(motor_router())
     app.include_router(routing_dashboard_router())
+    app.include_router(direct_monitor_router())
+    install_collector(app)
 
     router: Final = getattr(app, "router", None)
     startup: Final = getattr(router, "on_startup", None)

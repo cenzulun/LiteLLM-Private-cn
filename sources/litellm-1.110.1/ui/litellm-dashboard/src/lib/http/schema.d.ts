@@ -13117,6 +13117,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/private/monitor/direct/configuration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Configuration */
+        get: operations["configuration_private_monitor_direct_configuration_get"];
+        /** Save */
+        put: operations["save_private_monitor_direct_configuration_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/private/monitor/direct/deployments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Deployments */
+        get: operations["deployments_private_monitor_direct_deployments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/private/monitor/direct/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** History */
+        get: operations["history_private_monitor_direct_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/private/monitor/direct/raw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Raw */
+        get: operations["raw_private_monitor_direct_raw_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/private/monitor/direct/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Snapshot */
+        get: operations["snapshot_private_monitor_direct_snapshot_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/private/monitor/direct/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test */
+        post: operations["test_private_monitor_direct_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/private/monitor/history": {
         parameters: {
             query?: never;
@@ -33492,6 +33595,88 @@ export interface components {
             /** Tag */
             tag: string;
         };
+        /** DirectSettings */
+        DirectSettings: {
+            /**
+             * Retention Days
+             * @default 7
+             */
+            retention_days: number;
+            /**
+             * Routing Enabled
+             * @default false
+             */
+            routing_enabled: boolean;
+            /** Sources */
+            sources?: components["schemas"]["DirectSource"][];
+        };
+        /** DirectSource */
+        DirectSource: {
+            /** Api Key */
+            api_key?: string | null;
+            /**
+             * Cache Threshold
+             * @default 90
+             */
+            cache_threshold: number;
+            /**
+             * Clear Api Key
+             * @default false
+             */
+            clear_api_key: boolean;
+            /**
+             * Deployment Id
+             * @default
+             */
+            deployment_id: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Id */
+            id?: string;
+            /**
+             * Interval Seconds
+             * @default 10
+             */
+            interval_seconds: number;
+            /**
+             * Kind
+             * @default engine
+             * @enum {string}
+             */
+            kind: "engine" | "npu" | "gateway";
+            /**
+             * Latency Threshold
+             * @default 30
+             */
+            latency_threshold: number;
+            /**
+             * Model Name
+             * @default
+             */
+            model_name: string;
+            /** Name */
+            name: string;
+            /**
+             * Queue Threshold
+             * @default 20
+             */
+            queue_threshold: number;
+            /**
+             * Timeout Seconds
+             * @default 5
+             */
+            timeout_seconds: number;
+            /** Url */
+            url: string;
+            /**
+             * Verify Tls
+             * @default true
+             */
+            verify_tls: boolean;
+        };
         /** DiscoverAgentRequest */
         DiscoverAgentRequest: {
             /**
@@ -43531,6 +43716,10 @@ export interface components {
                 number,
                 number
             ];
+        };
+        /** Probe */
+        Probe: {
+            source: components["schemas"]["DirectSource"];
         };
         /** Prompt */
         Prompt: {
@@ -72489,6 +72678,199 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    configuration_private_monitor_direct_configuration_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    save_private_monitor_direct_configuration_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DirectSettings"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deployments_private_monitor_direct_deployments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    history_private_monitor_direct_history_get: {
+        parameters: {
+            query: {
+                source_id: string;
+                key: string;
+                minutes?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    raw_private_monitor_direct_raw_get: {
+        parameters: {
+            query: {
+                source_id: string;
+                search?: string;
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    snapshot_private_monitor_direct_snapshot_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    test_private_monitor_direct_test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Probe"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

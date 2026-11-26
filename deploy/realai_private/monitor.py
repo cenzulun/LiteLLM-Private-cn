@@ -186,14 +186,16 @@ def monitor_router() -> APIRouter:
 
         active: Final = proxy_server.llm_router
         metric_enabled: Final = os.getenv("REALAI_METRIC_ROUTING_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
+        from realai_private.direct_monitor import collector
+        direct_enabled = bool(collector.settings and collector.settings.get("routing_enabled"))
         metric_strategy = getattr(active, "_realai_metric_strategy", None) if active is not None else None
         registered = bool(metric_strategy is not None and getattr(getattr(active, "_core", active), "_custom_strategy", None) is metric_strategy)
         return {
             "active": active is not None,
             "strategy": getattr(active, "routing_strategy", None),
-            "metric_routing_enabled": metric_enabled,
+            "metric_routing_enabled": metric_enabled or direct_enabled,
             "metric_routing_registered": registered,
-            "metric_routing_source": "Prometheus 运行与排队压力" if metric_enabled and os.getenv("PROMETHEUS_URL", "").strip() else "未启用",
+            "metric_routing_source": "直接采集的运行与排队压力" if direct_enabled else "Prometheus 运行与排队压力" if metric_enabled and os.getenv("PROMETHEUS_URL", "").strip() else "未启用",
             "metric_routing_last_reason": getattr(metric_strategy, "last_reason", "尚未产生路由请求") if registered else "指标感知路由未注册",
             "metric_routing_counts": {
                 "metric": getattr(metric_strategy, "metric_picks", 0) if registered else 0,

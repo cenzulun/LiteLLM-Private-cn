@@ -4,32 +4,68 @@ import MonitorConfiguration from "./MonitorConfiguration";
 
 let saved: unknown;
 beforeEach(() => {
-  testQueryClient.clear(); saved = null;
-  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-    const path = String(input);
-    if (init?.method === "PUT") { saved = JSON.parse(String(init.body)); return Response.json(saved); }
-    if (path.endsWith("/test")) return Response.json({ message: "连接成功" });
-    return Response.json({ prometheus_url: "", queries: {}, metrics: [{ key: "engine_waiting", label: "引擎排队请求数", query: "sum(queue)" }] });
-  }));
+  testQueryClient.clear();
+  saved = null;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = String(input);
+      if (init?.method === "PUT") {
+        saved = JSON.parse(String(init.body));
+        return Response.json(saved);
+      }
+      if (path.endsWith("/test")) return Response.json({ message: "连接成功" });
+      return Response.json({
+        prometheus_url: "",
+        queries: {},
+        metrics: [{ key: "engine_waiting", label: "引擎排队请求数", query: "sum(queue)" }],
+      });
+    }),
+  );
 });
 afterEach(() => vi.unstubAllGlobals());
 
 describe("监控配置", () => {
+  it("配置入口位于刷新前且默认收起，展开配置不打断监控", async () => {
+    const refresh = vi.fn();
+    renderWithProviders(
+      <MonitorConfiguration accessToken="test-only" userRole="Admin" title="推理监控" onRefresh={refresh} />,
+    );
+    expect(screen.getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "配置源采集",
+      "配置监控源",
+      "刷新",
+    ]);
+    expect(screen.queryByRole("textbox", { name: "内网监控地址" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "配置监控源" }));
+    expect(await screen.findByRole("textbox", { name: "内网监控地址" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "收起监控源" }));
+    expect(screen.queryByRole("textbox", { name: "内网监控地址" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "刷新" }));
+    expect(refresh).toHaveBeenCalledOnce();
+  });
   it("将页面地址和自定义指标映射保存，并提示持久化结果", async () => {
     renderWithProviders(<MonitorConfiguration accessToken="test-only" userRole="Admin" />);
     fireEvent.click(screen.getByRole("button", { name: "配置监控源" }));
     const input = await screen.findByRole("textbox", { name: "内网监控地址" });
     fireEvent.change(input, { target: { value: "http://127.0.0.1:9090" } });
     fireEvent.click(screen.getByText("高级设置：指标映射"));
-    fireEvent.change(screen.getByLabelText("自定义查询映射"), { target: { value: '{"engine_waiting":"sum(custom_queue)"}' } });
+    fireEvent.change(screen.getByLabelText("自定义查询映射"), {
+      target: { value: '{"engine_waiting":"sum(custom_queue)"}' },
+    });
     fireEvent.click(screen.getByRole("button", { name: "保存配置" }));
     expect(await screen.findByRole("status")).toHaveTextContent("配置已保存到数据库");
-    expect(saved).toEqual({ prometheus_url: "http://127.0.0.1:9090", queries: { engine_waiting: "sum(custom_queue)" } });
+    expect(saved).toEqual({
+      prometheus_url: "http://127.0.0.1:9090",
+      queries: { engine_waiting: "sum(custom_queue)" },
+    });
   });
   it("测试连接不会保存配置，非法映射给出中文提示", async () => {
     renderWithProviders(<MonitorConfiguration accessToken="test-only" userRole="Admin" />);
     fireEvent.click(screen.getByRole("button", { name: "配置监控源" }));
-    fireEvent.change(await screen.findByRole("textbox", { name: "内网监控地址" }), { target: { value: "http://127.0.0.1:9090" } });
+    fireEvent.change(await screen.findByRole("textbox", { name: "内网监控地址" }), {
+      target: { value: "http://127.0.0.1:9090" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "测试连接" }));
     expect(await screen.findByRole("status")).toHaveTextContent("连接成功");
     expect(saved).toBeNull();

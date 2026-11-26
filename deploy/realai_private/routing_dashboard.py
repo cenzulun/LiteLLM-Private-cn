@@ -211,6 +211,14 @@ def routing_dashboard_router():
             identifier = row["deployment"]
             row["values"] = {item[0]: series_value(metrics, item[0], identifier) for item in ROUTING_METRICS if item[0] not in ("route_client_requests", "route_selections")}
             row["values"].update({key: matched_engine_value(metrics, key, row, inventory) for key in ("engine_running", "engine_waiting", "engine_queue_latency")})
+            from realai_private.direct_monitor import collector, source_status
+            sources = (collector.settings or {}).get("sources", [])
+            direct = next((source for source in sources if source["enabled"] and source["kind"] == "engine" and source["deployment_id"] == identifier), None)
+            if direct:
+                current = await asyncio.to_thread(source_status, direct)
+                if current["fresh"] and len(current["model_names"]) == 1:
+                    actual = {item["key"]: item["value"] for item in current["metrics"]}
+                    row["values"].update({key: actual.get(key) for key in ("engine_running", "engine_waiting", "engine_queue_latency")})
             count = row["values"]["route_requests"]
             row["traffic_share"] = 100*count/total_attempts if count is not None and total_attempts else None
             observed = next((event for event in events if event["deployment"] == identifier), None)
