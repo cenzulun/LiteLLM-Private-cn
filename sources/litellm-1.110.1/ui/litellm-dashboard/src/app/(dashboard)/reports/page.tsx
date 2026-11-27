@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import ReportConversation from "@/components/reports/ReportConversation";
+import ReportSchedules from "@/components/reports/ReportSchedules";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { createApiClient } from "@/lib/http/client";
 import { getProxyBaseUrl } from "@/components/networking";
@@ -56,6 +57,7 @@ export default function ReportsPage() {
   const [message, setMessage] = useState("");
   const [instructions, setInstructions] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
+  const [schedulesOpen, setSchedulesOpen] = useState(false);
   const [selected, setSelected] = useQueryState("report", parseAsString);
   const cache = useQueryClient();
   const models = useQuery({
@@ -103,7 +105,6 @@ export default function ReportsPage() {
       await client.post<Report>("/private/reports", {
         accessToken,
         body: {
-          request_id: globalThis.crypto.randomUUID(),
           name: name.trim() || `运行监控报告 ${range.start.replace("T", " ")}`,
           start_at: start,
           end_at: end,
@@ -118,7 +119,7 @@ export default function ReportsPage() {
       setMessage(
         error instanceof Error && /[\u4e00-\u9fff]/.test(error.message)
           ? error.message
-          : "提交失败，请检查权限与模型配置后重试。",
+          : "报告请求未能提交，请刷新页面并检查服务连接后重试。",
       );
     } finally {
       setBusy(false);
@@ -175,7 +176,7 @@ export default function ReportsPage() {
             </select>
           </label>
         </div>
-        <details>
+        <details open>
           <summary className="cursor-pointer text-sm text-muted-foreground">自定义要求（选填）</summary>
           <label className="mt-3 grid gap-2 text-sm">
             报告生成要求
@@ -206,9 +207,14 @@ export default function ReportsPage() {
               </Button>
             ))}
           </div>
-          <Button disabled={!editable || busy || !chosen} onClick={() => void generate()}>
-            {busy ? "正在提交…" : "生成报告"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setSchedulesOpen(true)}>
+              定时任务
+            </Button>
+            <Button disabled={!editable || busy || !chosen} onClick={() => void generate()}>
+              {busy ? "正在提交…" : "生成报告"}
+            </Button>
+          </div>
         </div>
         {models.isError && (
           <p role="alert" className="text-sm text-destructive">
@@ -305,6 +311,17 @@ export default function ReportsPage() {
           </div>
         </div>
       </section>
+      <ReportSchedules
+        open={schedulesOpen}
+        onOpenChange={setSchedulesOpen}
+        accessToken={accessToken}
+        models={models.data?.models ?? []}
+        editable={editable}
+        onReport={(id) => {
+          setSchedulesOpen(false);
+          void setSelected(id);
+        }}
+      />
       <Sheet
         open={Boolean(selected)}
         onOpenChange={(open) => {

@@ -6,14 +6,26 @@ vi.mock("@/app/(dashboard)/hooks/useAuthorized", () => ({ default: () => ({
   accessToken: "test-only", userRole: "Admin", isAuthorized: true, isLoading: false, isViewOnly: false,
 }) }));
 let submitted: Record<string, unknown> | null;
+let schedules: Record<string, unknown>[];
 const now = Date.now() / 1000;
 const report = { id: "5e63a528-703c-4b21-9694-9635b8f7afde", name: "运行日报", start_at: now - 3600,
   end_at: now - 1, created_at: now, created_by: "测试管理员", model: "Qwen", status: "completed", error: null };
 beforeEach(() => {
   submitted = null;
+  schedules = [];
+  vi.stubGlobal("crypto", {});
   testQueryClient.clear();
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const path = String(input);
+    if (path.includes('/private/report-schedules')) {
+      if (init?.method === 'POST' || init?.method === 'PUT') {
+        submitted = JSON.parse(String(init.body));
+        const task = { ...submitted, id: 'schedule-test', revision: 1, next_run_at: now + 3600 };
+        schedules = [task];
+        return Response.json(task);
+      }
+      return Response.json({ schedules });
+    }
     if (init?.method === "POST") { submitted = JSON.parse(String(init.body)); return Response.json({ ...report, status: "queued" }); }
     if (path.includes("/models")) return Response.json({ models: ["Qwen", "DeepSeek"] });
     if (path.includes("/conversation")) return Response.json({ messages: [{ ...report, instructions: "", summary: "已生成标准版报告" }] });
@@ -24,9 +36,10 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("报告中心", () => {
-  it("所选名称、时间与分析模型提交到后台队列", async () => {
+  it("HTTP 内网环境缺少浏览器随机编号接口时仍能提交报告", async () => {
     renderWithProviders(<ReportsPage />);
     await screen.findByRole("option", { name: "Qwen" });
+    expect(screen.getByLabelText('报告生成要求')).toBeVisible();
     fireEvent.change(screen.getByLabelText("报告名称"), { target: { value: "本周运行报告" } });
     fireEvent.change(screen.getByLabelText("开始时间"), { target: { value: "2026-01-01T00:00" } });
     fireEvent.change(screen.getByLabelText("结束时间"), { target: { value: "2026-01-02T00:00" } });
@@ -35,7 +48,6 @@ describe("报告中心", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("后台生成队列");
     expect(submitted).toEqual(expect.objectContaining({ name: "本周运行报告", model: "DeepSeek",
       start_at: new Date("2026-01-01T00:00").getTime() / 1000, end_at: new Date("2026-01-02T00:00").getTime() / 1000 }));
-    expect(submitted?.request_id).toEqual(expect.any(String));
   });
   it("详情在右侧展示隔离的完整报告并可下载", async () => {
     renderWithProviders(<ReportsPage />);
@@ -56,5 +68,19 @@ describe("报告中心", () => {
     fireEvent.click(screen.getByRole("button", { name: "发送并生成修订版" }));
     await vi.waitFor(() => expect(submitted).toEqual(expect.objectContaining({ instructions: "重点分析排队，保留图表", model: "Qwen" })));
     expect(screen.getByRole("button", { name: "返回完整预览" })).toBeInTheDocument();
+  });
+  it('定时任务保存频率、统计范围和报告生成要求', async () => {
+    renderWithProviders(<ReportsPage />);
+    await screen.findByRole('option', { name: 'Qwen' });
+    fireEvent.click(screen.getByRole('button', { name: '定时任务', exact: true }));
+    fireEvent.click(await screen.findByRole('button', { name: '新增任务', exact: true }));
+    fireEvent.change(screen.getByLabelText('任务名称'), { target: { value: '每周运行报告' } });
+    fireEvent.change(screen.getByLabelText('执行频率'), { target: { value: 'weekly' } });
+    fireEvent.change(screen.getByLabelText('执行星期'), { target: { value: '4' } });
+    fireEvent.change(screen.getByLabelText('统计最近小时数'), { target: { value: '168' } });
+    fireEvent.change(screen.getByLabelText('定时报告生成要求'), { target: { value: '重点比较排队与延迟' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存任务', exact: true }));
+    expect(await screen.findByRole('heading', { name: '每周运行报告', exact: true })).toBeVisible();
+    expect(submitted).toEqual(expect.objectContaining({ cadence: 'weekly', weekday: 4, lookback_hours: 168, instructions: '重点比较排队与延迟', model: 'Qwen' }));
   });
 });

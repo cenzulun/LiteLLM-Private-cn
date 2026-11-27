@@ -48,7 +48,7 @@ export default function ReportConversation(props: Props) {
     try {
       const report = await client.post<{ id: string }>(`/private/reports/${props.identifier}/revisions`, {
         accessToken: props.accessToken,
-        body: { request_id: globalThis.crypto.randomUUID(), instructions: instructions.trim(), model: chosen },
+        body: { instructions: instructions.trim(), model: chosen },
       });
       setInstructions("");
       await cache.invalidateQueries({ queryKey: ["reports", props.accessToken] });
@@ -57,7 +57,7 @@ export default function ReportConversation(props: Props) {
       setError(
         cause instanceof Error && /[\u4e00-\u9fff]/.test(cause.message)
           ? cause.message
-          : "调整提交失败，请检查模型与权限后重试。",
+          : "调整请求未能提交，请刷新页面并检查服务连接后重试。",
       );
     } finally {
       setBusy(false);

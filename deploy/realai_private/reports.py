@@ -136,26 +136,32 @@ def install_reports(app):
     @asynccontextmanager
     async def lifespan(application):
         async with original(application) as state:
-            task = asyncio.create_task(worker(), name='private-report-worker')
+            from realai_private.report_schedules import scheduler
+            tasks = [asyncio.create_task(worker(), name='private-report-worker'),
+                     asyncio.create_task(scheduler(), name='private-report-scheduler')]
             try:
                 yield state
             finally:
-                task.cancel()
-                with suppress(asyncio.CancelledError):
-                    await task
+                for task in tasks:
+                    task.cancel()
+                for task in tasks:
+                    with suppress(asyncio.CancelledError):
+                        await task
     app.router.lifespan_context = lifespan
 
 
+class ReportRoute(APIRoute):
+    def get_route_handler(self):
+        handler = super().get_route_handler()
+        async def protected(request):
+            try:
+                return await handler(request)
+            except RequestValidationError:
+                return JSONResponse({'detail': '报告参数无效，请检查名称、模型、生成要求和时间范围'}, status_code=422)
+        return protected
+
+
 def reports_router():
-    class ReportRoute(APIRoute):
-        def get_route_handler(self):
-            handler = super().get_route_handler()
-            async def protected(request):
-                try:
-                    return await handler(request)
-                except RequestValidationError:
-                    return JSONResponse({'detail': '报告参数无效，请检查名称、模型及不超过三十天的时间范围'}, status_code=422)
-            return protected
     router = APIRouter(prefix='/private/reports', tags=['报告中心'], route_class=ReportRoute)
 
     @router.get('/models')
