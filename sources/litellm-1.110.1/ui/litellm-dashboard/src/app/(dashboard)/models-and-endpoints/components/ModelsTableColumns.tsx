@@ -7,6 +7,7 @@ import { CredentialIdentity } from "@/components/shared/CredentialIdentity";
 import { Copy, Info, Loader2, Pencil, RefreshCw, Trash2 } from "lucide-react";
 
 import { ProviderLogo } from "@/components/molecules/models/ProviderLogo";
+import ModelBasicEdit from "@/components/model_dashboard/ModelBasicEdit";
 import { ModelData } from "@/components/model_dashboard/types";
 import { DataTableSortHeader } from "@/components/shared/DataTable";
 import { CellTooltip, DateCell, formatCellDate, IdCell, StatusBadge } from "@/components/shared/table_cells";
@@ -15,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Switch } from "@/components/ui/switch";
 import { getDisplayModelName } from "@/components/view_model/model_name_display";
-import { copyToClipboard, formatPerSecondCost } from "@/utils/dataUtils";
+import { copyToClipboard } from "@/utils/dataUtils";
 import i18n from "@/i18n/i18n";
 
 export const MODEL_ID_COLUMN_ID = "model_info_id";
@@ -296,6 +297,7 @@ interface ModelRowActionsProps {
   isPausing: boolean;
   onDeleteClick?: (modelId: string) => void;
   onTogglePauseClick?: (modelId: string, blocked: boolean) => void | Promise<void>;
+  onModelChanged?: () => void;
 }
 
 function ModelRowActions({
@@ -306,6 +308,7 @@ function ModelRowActions({
   isPausing,
   onDeleteClick,
   onTogglePauseClick,
+  onModelChanged,
 }: ModelRowActionsProps) {
   const { t } = useTranslation();
   const modelId = model.model_info?.id;
@@ -333,6 +336,7 @@ function ModelRowActions({
 
   return (
     <div className="flex items-center justify-end gap-1.5">
+      <ModelBasicEdit model={model} changed={onModelChanged} />
       <span className="flex w-8 shrink-0 items-center justify-center">
         {isPausing ? (
           <Loader2
@@ -401,6 +405,7 @@ export interface ModelsTableColumnDeps {
   onTogglePauseClick?: (modelId: string, blocked: boolean) => void | Promise<void>;
   pausingModelId?: string | null;
   credentialLabels?: ReadonlyMap<string, string>;
+  onModelChanged?: () => void;
 }
 
 export const getModelsTableColumns = (
@@ -414,6 +419,7 @@ export const getModelsTableColumns = (
     onTogglePauseClick,
     pausingModelId,
     credentialLabels,
+    onModelChanged,
   }: ModelsTableColumnDeps,
   t: TFunction = i18n.t.bind(i18n),
 ): ColumnDef<ModelData>[] => [
@@ -550,6 +556,7 @@ export const getModelsTableColumns = (
   {
     id: "actions",
     meta: {
+      pinned: "right",
       title: t("modelsAndEndpoints.modelsTableColumns.columns.actions"),
       className: "text-right",
       headerClassName: "text-right",
@@ -558,8 +565,8 @@ export const getModelsTableColumns = (
     enableSorting: false,
     enableHiding: false,
     enableResizing: false,
-    size: 110,
-    minSize: 110,
+    size: 190,
+    minSize: 190,
     cell: ({ row }) => (
       <ModelRowActions
         model={row.original}
@@ -569,6 +576,7 @@ export const getModelsTableColumns = (
         isPausing={pausingModelId === row.original.model_info?.id}
         onDeleteClick={onDeleteClick}
         onTogglePauseClick={onTogglePauseClick}
+        onModelChanged={onModelChanged}
       />
     ),
   },

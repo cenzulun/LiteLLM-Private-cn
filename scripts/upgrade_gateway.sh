@@ -14,7 +14,7 @@ if [ -f all-images-arm64.tar ]; then
   fi
   docker load -i all-images-arm64.tar
 fi
-image='realai/gateway:1.0.21-arm64'
+image='realai/gateway:1.0.22-arm64'
 [ "$(docker image inspect --format '{{.Architecture}}' "$image")" = arm64 ] || { echo '未找到本版 ARM64 镜像，请先导入。'; exit 2; }
 
 python3 - <<'PY'
@@ -27,10 +27,10 @@ path = Path('.env')
 text = path.read_text(encoding='utf-8')
 if not all(re.search(r'^' + name + r'=', text, re.M) for name in ('DATABASE_URL', 'REDIS_HOST', 'LITELLM_SALT_KEY')):
     raise SystemExit('原环境文件缺少必要配置，停止升级，不重新生成密钥。')
-updated, count = re.subn(r'^GATEWAY_IMAGE=.*$', "GATEWAY_IMAGE='realai/gateway:1.0.21-arm64'", text, flags=re.M)
+updated, count = re.subn(r'^GATEWAY_IMAGE=.*$', "GATEWAY_IMAGE='realai/gateway:1.0.22-arm64'", text, flags=re.M)
 if count != 1:
     raise SystemExit('镜像配置缺失或重复，请在本机核对。')
-backup = Path('.env.before-1.0.21-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
+backup = Path('.env.before-1.0.22-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
 shutil.copy2(path, backup)
 backup.chmod(0o600)
 path.write_text(updated, encoding='utf-8')

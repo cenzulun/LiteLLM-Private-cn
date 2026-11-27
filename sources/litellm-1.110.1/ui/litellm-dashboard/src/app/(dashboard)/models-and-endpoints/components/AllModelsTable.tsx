@@ -8,7 +8,6 @@ import { Search, Settings } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import ModelBasicEdit from "@/components/model_dashboard/ModelBasicEdit";
 import { ModelData } from "@/components/model_dashboard/types";
 import {
   DataTable,
@@ -161,19 +160,9 @@ export function AllModelsTable({
       onTogglePauseClick,
       pausingModelId,
       credentialLabels,
+      onModelChanged: onRefresh,
     };
-    return [
-      {
-        id: "basic_edit",
-        header: "操作",
-        enableHiding: false,
-        size: 100,
-        cell: ({ row }: { row: { original: ModelData } }) => (
-          <ModelBasicEdit model={row.original} changed={onRefresh} />
-        ),
-      },
-      ...getModelsTableColumns(columnDeps),
-    ];
+    return getModelsTableColumns(columnDeps);
   }, [
     userRole,
     userID,
