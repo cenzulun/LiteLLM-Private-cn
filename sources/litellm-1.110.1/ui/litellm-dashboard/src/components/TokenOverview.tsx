@@ -69,7 +69,7 @@ export default function TokenOverview({ compact = false }: { compact?: boolean }
         <span>失败请求：{number(totals.failed)}</span>
         <span>平均时延：{totals.avgLatencyMs === null ? "暂无记录" : `${number(totals.avgLatencyMs)} 毫秒`}</span>
       </div>
-      {admin && <DirectMetricsPanel accessToken={accessToken} mode="overview" />}
+      {admin && <DirectMetricsPanel accessToken={accessToken} mode="overview" hideTrends={compact} />}
       <div className="flex flex-wrap gap-6 text-sm">
         <a className="text-primary underline underline-offset-4" href={uiHref("inference-monitor")}>
           查看令牌吞吐与时延监控
@@ -81,7 +81,10 @@ export default function TokenOverview({ compact = false }: { compact?: boolean }
           查看单次调用日志
         </a>
       </div>
-      <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">统计口径</summary><p className="mt-2">令牌统计以模型响应中的实际用量为准，上游未返回用量的请求不计入完整令牌统计。</p></details>
+      <details className="text-xs text-muted-foreground">
+        <summary className="cursor-pointer">统计口径</summary>
+        <p className="mt-2">令牌统计以模型响应中的实际用量为准，上游未返回用量的请求不计入完整令牌统计。</p>
+      </details>
     </div>
   );
 }

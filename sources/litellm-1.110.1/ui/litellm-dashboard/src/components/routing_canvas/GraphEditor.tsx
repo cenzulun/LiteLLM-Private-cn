@@ -24,6 +24,7 @@ export default function GraphEditor({
   const [from, setFrom] = useState<string | null>(null);
   const [kind, setKind] = useState<GraphEdge["kind"]>("fallback");
   const [error, setError] = useState("");
+  const [connectionsOpen, setConnectionsOpen] = useState(false);
   const [drag, setDrag] = useState<{ id: string; x: number; y: number; clientX: number; clientY: number } | null>(null);
   const beginDrag = (event: PointerEvent<HTMLDivElement>, node: Graph["nodes"][number]) => {
     if (!editable) return;
@@ -85,6 +86,47 @@ export default function GraphEditor({
               <option value="context">上下文超限后切换</option>
             </select>
           </label>
+          <div className="relative">
+            <Button
+              variant="outline"
+              size="sm"
+              aria-expanded={connectionsOpen}
+              onClick={() => setConnectionsOpen(!connectionsOpen)}
+            >
+              连接关系与优先级（{graph.edges.length}）
+            </Button>
+            {connectionsOpen && (
+              <div className="absolute left-0 top-10 z-floating max-h-80 w-[min(600px,80vw)] overflow-auto rounded-lg border bg-popover p-4 shadow-md">
+                <div className="mt-3 space-y-2">
+                  {graph.edges.map((edge, index) => (
+                    <div
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted px-3 py-2"
+                      key={`${edge.source}-${edge.target}-${edge.kind}`}
+                    >
+                      <span>
+                        {graph.nodes.find((node) => node.id === edge.source)?.model} →{" "}
+                        {graph.nodes.find((node) => node.id === edge.target)?.model} ·{" "}
+                        {edge.kind === "fallback" ? "调用失败" : "上下文超限"} · 顺序{" "}
+                        {
+                          graph.edges
+                            .slice(0, index + 1)
+                            .filter((item) => item.source === edge.source && item.kind === edge.kind).length
+                        }
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={!editable}
+                        onClick={() => change({ ...graph, edges: graph.edges.filter((_, i) => i !== index) })}
+                      >
+                        移除连接
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -126,7 +168,7 @@ export default function GraphEditor({
         </p>
       )}
       <div
-        className="route-canvas max-h-[560px] min-h-72 overflow-auto rounded-xl border"
+        className="route-canvas h-[min(68vh,780px)] min-h-[520px] resize-y overflow-auto rounded-xl border"
         aria-label="路由画布"
         ref={viewport}
       >
@@ -287,36 +329,6 @@ export default function GraphEditor({
           </div>
         </div>
       </div>
-      <details className="text-sm">
-        <summary className="cursor-pointer">连接关系与优先级（{graph.edges.length}）</summary>
-        <div className="mt-3 space-y-2">
-          {graph.edges.map((edge, index) => (
-            <div
-              className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted px-3 py-2"
-              key={`${edge.source}-${edge.target}-${edge.kind}`}
-            >
-              <span>
-                {graph.nodes.find((node) => node.id === edge.source)?.model} →{" "}
-                {graph.nodes.find((node) => node.id === edge.target)?.model} ·{" "}
-                {edge.kind === "fallback" ? "调用失败" : "上下文超限"} · 顺序{" "}
-                {
-                  graph.edges
-                    .slice(0, index + 1)
-                    .filter((item) => item.source === edge.source && item.kind === edge.kind).length
-                }
-              </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={!editable}
-                onClick={() => change({ ...graph, edges: graph.edges.filter((_, i) => i !== index) })}
-              >
-                移除连接
-              </Button>
-            </div>
-          ))}
-        </div>
-      </details>
     </div>
   );
 }

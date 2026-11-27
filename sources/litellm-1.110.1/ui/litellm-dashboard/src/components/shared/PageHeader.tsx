@@ -17,7 +17,7 @@ export function PageHeader({ className, children, ...props }: ComponentProps<"di
   return (
     <div
       className={cn(
-        dashboard ? "page-toolbar flex min-w-0 shrink-0 flex-wrap items-center justify-start gap-2 sm:justify-end" : "shrink-0",
+        dashboard ? "page-toolbar flex min-w-0 shrink-0 flex-wrap items-center justify-start gap-2" : "shrink-0",
         className,
       )}
       {...props}

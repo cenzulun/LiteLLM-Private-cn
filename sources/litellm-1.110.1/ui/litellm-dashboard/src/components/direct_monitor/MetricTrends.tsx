@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getProxyBaseUrl } from "@/components/networking";
 import { createApiClient } from "@/lib/http/client";
@@ -13,22 +13,27 @@ const client = createApiClient({ getBaseUrl: () => getProxyBaseUrl() ?? "" });
 const palette = ["#2563eb", "#0f766e", "#7c3aed", "#b45309", "#be185d", "#0369a1"];
 function Trend({
   metric,
-  points,
   pending,
   error,
-  color,
   minutes,
   endAt,
+  comparisons,
 }: {
   metric: Metric;
-  points: [number, number | null][];
   pending: boolean;
   error: boolean;
-  color: string;
   minutes: number;
   endAt: number;
+  comparisons: { id: string; name: string; points: [number, number | null][] }[];
 }) {
-  const chart = points.map(([time, value]) => ({ time, value }));
+  const times = [...new Set(comparisons.flatMap((source) => source.points.map(([at]) => at)))].sort((a, b) => a - b);
+  const values = comparisons.map((source) => new Map(source.points));
+  const chart = times.map((time) =>
+    Object.fromEntries([
+      ["time", time],
+      ...comparisons.map((source, index) => [source.id, values[index].get(time) ?? null]),
+    ]),
+  );
   return (
     <section className="min-w-0 space-y-3 border-t border-border/70 pt-4" aria-label={`${metric.label}趋势`}>
       <div className="flex items-baseline justify-between gap-3">
@@ -48,7 +53,7 @@ function Trend({
               正在读取趋势…
             </p>
           );
-        if (!chart.some((row) => row.value != null))
+        if (!comparisons.some((source) => source.points.some(([, value]) => value != null)))
           return <p className="py-8 text-sm text-muted-foreground">当前时间范围暂无有效趋势数据。</p>;
         return (
           <div className="h-48 w-full" role="img" aria-label={`${metric.label}历史曲线`}>
@@ -82,15 +87,19 @@ function Trend({
                     borderRadius: 8,
                   }}
                 />
-                <Line
-                  dataKey="value"
-                  name={metric.label}
-                  stroke={color}
-                  strokeWidth={2}
-                  dot={false}
-                  isAnimationActive={false}
-                  connectNulls={false}
-                />
+                {comparisons.map((source, index) => (
+                  <Line
+                    key={source.id}
+                    data={source.points.map(([time, value]) => ({ time, [source.id]: value }))}
+                    dataKey={source.id}
+                    name={source.name}
+                    stroke={palette[index % palette.length]}
+                    strokeWidth={2}
+                    dot={comparisons.length > 1 ? { r: 2 } : false}
+                    isAnimationActive={false}
+                    connectNulls={false}
+                  />
+                ))}
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -103,10 +112,14 @@ export default function MetricTrends({
   source,
   accessToken,
   metrics = source.metrics,
+  sources = [source],
+  navigation,
 }: {
   source: Status;
   accessToken: string | null;
   metrics?: Metric[];
+  sources?: Status[];
+  navigation?: import("react").ReactNode;
 }) {
   const [chosen, setChosen] = useState<string[]>(() =>
     metrics.some((metric) => defaultTrends.includes(metric.key))
@@ -124,29 +137,36 @@ export default function MetricTrends({
   };
   const keys = selected.map((metric) => metric.key).join(",");
   const [initialEnd] = useState(() => Math.floor(Date.now() / 1000));
-  const history = useQuery({
-    queryKey: ["direct-monitor-history-batch", accessToken, source.id, keys, minutes],
-    enabled: Boolean(accessToken && keys),
-    queryFn: () =>
-      client.get<{ series: Record<string, [number, number | null][]> }>("/private/monitor/direct/histories", {
-        accessToken,
-        query: { source_id: source.id, keys, minutes },
-      }),
-    refetchInterval: 30000,
-    retry: 1,
+  const histories = useQueries({
+    queries: sources.map((item) => ({
+      queryKey: ["direct-monitor-history-batch", accessToken, item.id, keys, minutes],
+      enabled: Boolean(accessToken && keys),
+      queryFn: () =>
+        client.get<{ series: Record<string, [number, number | null][]> }>("/private/monitor/direct/histories", {
+          accessToken,
+          query: { source_id: item.id, keys, minutes },
+        }),
+      refetchInterval: 30000,
+      retry: 1,
+    })),
   });
-  const timestamps = Object.values(history.data?.series ?? {}).flatMap((rows) =>
-    rows.filter((row) => row[1] != null).map((row) => row[0]),
+  const timestamps = histories.flatMap((history) =>
+    Object.values(history.data?.series ?? {}).flatMap((rows) =>
+      rows.filter((row) => row[1] != null).map((row) => row[0]),
+    ),
   );
   const first = timestamps.length ? Math.min(...timestamps) : null;
   const last = timestamps.length ? Math.max(...timestamps) : null;
-  const endAt = history.dataUpdatedAt ? Math.floor(history.dataUpdatedAt / 1000) : initialEnd;
+  const endAt = Math.max(initialEnd, ...histories.map((history) => Math.floor(history.dataUpdatedAt / 1000)));
   return (
     <section className="monitor-surface space-y-4 p-5" aria-label="趋势指标">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h3 className="text-base font-semibold">趋势指标</h3>
-        </div>
+        {!navigation && (
+          <div>
+            <h3 className="text-base font-semibold">趋势指标</h3>
+          </div>
+        )}
+        {navigation}
         <label className="flex items-center gap-2 text-sm">
           历史时间
           <select
@@ -162,6 +182,16 @@ export default function MetricTrends({
           </select>
         </label>
       </div>
+      {sources.length > 1 && (
+        <div className="flex flex-wrap gap-4 text-xs" aria-label="模型曲线图例">
+          {sources.map((item, index) => (
+            <span key={item.id} className="flex items-center gap-2">
+              <span className="size-2.5 rounded-full" style={{ background: palette[index % palette.length] }} />
+              {item.name}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -232,16 +262,19 @@ export default function MetricTrends({
       )}
       {selected.length ? (
         <div className="grid gap-x-6 gap-y-4 lg:grid-cols-2 2xl:grid-cols-3">
-          {selected.map((metric, index) => (
+          {selected.map((metric) => (
             <Trend
               key={`${source.id}-${metric.key}`}
               metric={metric}
-              points={history.data?.series?.[metric.key] ?? []}
-              pending={history.isPending}
-              error={history.isError}
-              color={palette[index % palette.length]}
+              pending={histories.every((history) => history.isPending)}
+              error={histories.every((history) => history.isError)}
               minutes={minutes}
               endAt={endAt}
+              comparisons={sources.map((item, index) => ({
+                id: `series_${index}`,
+                name: item.name,
+                points: histories[index]?.data?.series?.[metric.key] ?? [],
+              }))}
             />
           ))}
         </div>

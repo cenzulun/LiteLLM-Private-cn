@@ -7,7 +7,6 @@ import { Page } from "@/components/shared/Page";
 import { createApiClient } from "@/lib/http/client";
 import LoadingScreen from "@/components/common_components/LoadingScreen";
 import MetricHistory from "@/components/MetricHistory";
-import MonitorConfiguration from "@/components/MonitorConfiguration";
 import DirectMetricsPanel from "@/components/direct_monitor/DirectMetricsPanel";
 type Metric = {
   key: string;
@@ -58,14 +57,7 @@ export default function InferenceMonitor() {
   if (isLoading || !isAuthorized) return <LoadingScreen />;
   return (
     <Page>
-      <MonitorConfiguration
-        accessToken={accessToken}
-        userRole={isViewOnly ? "Admin Viewer" : userRole}
-        title="推理监控"
-        onRefresh={() => void snapshot.refetch()}
-        refreshing={snapshot.isFetching}
-      />
-      <DirectMetricsPanel accessToken={accessToken} />
+      <DirectMetricsPanel accessToken={accessToken} userRole={isViewOnly ? "Admin Viewer" : userRole} />
       {(() => {
         if (snapshot.isPending) {
           return <p role="status">正在加载监控状态…</p>;

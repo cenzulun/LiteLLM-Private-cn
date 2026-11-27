@@ -150,6 +150,13 @@ class PrivateDeploymentMiddleware:
         from realai_private.routing_telemetry import RequestTrace, request_trace, install_observability
         inference_paths = ("/chat/completions", "/v1/chat/completions", "/embeddings", "/v1/embeddings", "/responses", "/v1/responses", "/completions", "/v1/completions", "/rerank", "/v1/rerank")
         if path in inference_paths and scope.get("method") == "POST":
+            from realai_private.key_vault import KeyVault
+            import hashlib
+            authorization = next((value.decode() for key, value in scope.get('headers', []) if key.lower() == b'authorization'), '')
+            credential = authorization[7:] if authorization.lower().startswith('bearer ') else ''
+            if credential and await asyncio.to_thread(KeyVault().revoked, hashlib.sha256(credential.encode()).hexdigest()):
+                await JSONResponse({'error': {'message': '调用密钥已删除，无法继续使用'}}, status_code=401)(scope, receive, send)
+                return
             trace = RequestTrace()
             token = request_trace.set(trace)
             observer = install_observability()
@@ -285,6 +292,45 @@ class PrivateDeploymentMiddleware:
                     await send(message)
             return
 
+        if path == "/key/delete" and scope.get("method") == "POST":
+            chunks = []
+            while True:
+                item = await receive()
+                chunks.append(item.get('body', b''))
+                if not item.get('more_body', False):
+                    break
+            request_body = b''.join(chunks)
+            async def deletion_receive():
+                return {'type': 'http.request', 'body': request_body, 'more_body': False}
+            messages = []
+            async def deletion_send(message):
+                messages.append(message)
+            await self.app(scope, deletion_receive, deletion_send)
+            start = next((item for item in messages if item['type'] == 'http.response.start'), None)
+            if start and start.get('status', 500) < 300:
+                from realai_private.key_vault import KeyVault
+                await asyncio.to_thread(KeyVault().revoke, json.loads(request_body).get('keys', []))
+            for message in messages:
+                await send(message)
+            return
+
+        if path == "/key/generate" and scope.get("method") == "POST":
+            messages = []
+            async def capture_key(message):
+                messages.append(message)
+            await self.app(scope, replay, capture_key)
+            start = next((item for item in messages if item["type"] == "http.response.start"), None)
+            if start and start.get("status", 500) < 300:
+                try:
+                    from realai_private.key_vault import KeyVault
+                    raw = b"".join(item.get("body", b"") for item in messages if item["type"] == "http.response.body")
+                    await asyncio.to_thread(KeyVault().save, json.loads(raw).get("key"))
+                except Exception:
+                    pass
+            for message in messages:
+                await send(message)
+            return
+
         async def secure_send(message: Message) -> None:
             if message["type"] == "http.response.start":
                 headers: Final = [(k, v) for k, v in message.get("headers", []) if k.lower() != b"content-security-policy"]
@@ -316,6 +362,8 @@ def install(app: object) -> None:
     from realai_private.routing_dashboard import routing_dashboard_router
     from realai_private.reports import reports_router, install_reports, ReportRoute
     from realai_private.report_schedules import schedules_router
+    from realai_private.key_vault import key_vault_router
+    from realai_private.alert_history import alerts_router
 
     app.add_middleware(PrivateDeploymentMiddleware)
     app.include_router(monitor_router())
@@ -326,6 +374,8 @@ def install(app: object) -> None:
     app.include_router(direct_monitor_router())
     app.include_router(reports_router())
     app.include_router(schedules_router(ReportRoute))
+    app.include_router(alerts_router())
+    app.include_router(key_vault_router())
     install_collector(app)
     install_reports(app)
 

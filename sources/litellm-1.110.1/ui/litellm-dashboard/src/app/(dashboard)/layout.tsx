@@ -44,7 +44,7 @@ function PluginModeProviderWithAuth({ children }: { children: React.ReactNode })
   return <PluginModeProvider accessToken={accessToken}>{children}</PluginModeProvider>;
 }
 
-export function AgentControlPlaneView() {
+function AgentControlPlaneView() {
   const { t } = useTranslation();
   const { activePlugin } = usePluginMode();
   const activePluginName = activePlugin?.name;

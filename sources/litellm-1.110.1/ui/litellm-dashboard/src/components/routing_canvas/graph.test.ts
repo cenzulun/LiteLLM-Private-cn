@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { compileGraph, connectionError, defaults, graphFromSettings } from "./graph";
+import { compileGraph, connectionError, defaults, graphFromSettings, nextNodePosition } from "./graph";
 describe("路由画布编译", () => {
+  it("移除中间节点后新增位置不会覆盖已有节点", () => {
+    const original=graphFromSettings(defaults,["Qwen","GLM","Kimi"]);
+    const graph={...original,nodes:original.nodes.filter(node=>node.model!=="GLM")};
+    const position=nextNodePosition(graph);
+    expect(graph.nodes.some(node=>node.x===position.x&&node.y===position.y)).toBe(false);
+  });
   it("保留两类备用映射及备用优先级", () => {
     const settings = {
       ...defaults,

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, renderWithProviders, screen, testQueryClient, within } from "../../../tests/test-utils";
+import { fireEvent, renderWithProviders, screen, testQueryClient, within, waitFor } from "../../../tests/test-utils";
 import DirectConfiguration from "./DirectConfiguration";
 import DirectMetricsPanel from "./DirectMetricsPanel";
 
@@ -122,7 +122,7 @@ describe("源采集监控", () => {
     expect(screen.getAllByText(/当前窗口无新增样本或正在预热/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("0").length).toBeGreaterThan(0);
     expect(screen.queryByRole("heading", { name: "源采集活动告警" })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "趋势指标" })).toBeVisible();
+    expect(screen.getByRole("tab", { name: "趋势指标" })).toBeVisible();
     expect(await screen.findAllByText("当前时间范围暂无有效趋势数据。")).toHaveLength(2);
     expect(screen.getAllByText("首令牌时延（九十五分位）").length).toBeGreaterThan(1);
     expect(screen.queryByRole("img", { name: "源采集指标趋势" })).not.toBeInTheDocument();
@@ -136,6 +136,22 @@ describe("源采集监控", () => {
     renderWithProviders(<DirectMetricsPanel accessToken="test-only" />);
     expect(await screen.findByText(/尚未配置推理引擎采集源/)).toBeVisible();
     expect(screen.queryByRole("heading", { name: "推理实例监控" })).not.toBeInTheDocument();
+  });
+  it("四个监控页签切换后只展示所选模块并展开明细", async () => {
+    const onUrlUpdate = vi.fn();
+    renderWithProviders(<DirectMetricsPanel accessToken="test-only" />, { onUrlUpdate });
+    await screen.findByRole("tab", { name: "采集实例与模型" });
+    expect(screen.queryByRole("heading", { name: "采集实例与模型" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "采集实例与模型" }));
+    expect(await screen.findByRole("heading", { name: "采集实例与模型" })).toBeVisible();
+    expect(screen.queryByLabelText("趋势指标")).not.toBeInTheDocument();
+    await vi.waitFor(() =>
+      expect(screen.getByRole("tab", { name: "采集实例与模型" })).toHaveAttribute("aria-selected", "true"),
+    );
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("tab", { name: "全部指标明细" }));
+    expect(await screen.findByLabelText("筛选汇总指标")).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "采集实例与模型" })).not.toBeInTheDocument();
   });
 
   it("新增时仅展开新源，已有源被保留且操作位于同一行", async () => {

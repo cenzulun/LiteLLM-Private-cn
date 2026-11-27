@@ -28,6 +28,7 @@ export default function MonitorConfiguration({
   children,
   onRefresh,
   refreshing = false,
+  trailing,
 }: {
   accessToken: string | null;
   userRole: string;
@@ -35,6 +36,7 @@ export default function MonitorConfiguration({
   children?: ReactNode;
   onRefresh?: () => void;
   refreshing?: boolean;
+  trailing?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [sourceOpen, setSourceOpen] = useState(false);
@@ -138,7 +140,7 @@ export default function MonitorConfiguration({
       <div
         className={
           title
-            ? "flex flex-wrap items-center justify-end gap-2"
+            ? "flex flex-wrap items-center justify-start gap-3"
             : "flex flex-wrap items-center justify-between gap-3 rounded-xl border p-5"
         }
         aria-label="监控操作栏"
@@ -180,6 +182,7 @@ export default function MonitorConfiguration({
             </Button>
           )}
         </div>
+        {trailing}
       </div>
       {title && (
         <div id="source-configuration-panel" hidden={!sourceOpen}>

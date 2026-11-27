@@ -35,6 +35,14 @@ export const defaults: RouteSettings = {
   fallbacks: [],
   context_window_fallbacks: [],
 };
+export function nextNodePosition(graph: Graph) {
+  for (let index = 0; index <= graph.nodes.length; index++) {
+    const x = 440 + (index % 3) * 280;
+    const y = 40 + Math.floor(index / 3) * 200;
+    if (!graph.nodes.some((node) => Math.abs(node.x - x) < 245 && Math.abs(node.y - y) < 185)) return {x,y};
+  }
+  return {x:440,y:Math.min(2800,Math.max(40,...graph.nodes.map(node=>node.y))+220)};
+}
 export function graphFromSettings(settings: RouteSettings, models: string[]): Graph {
   const names = [
     ...new Set([

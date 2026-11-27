@@ -8,8 +8,16 @@ import { Input } from "@/components/ui/input";
 import { format, type Status } from "./types";
 const client = createApiClient({ getBaseUrl: () => getProxyBaseUrl() ?? "" });
 type Raw = { rows: { name: string; labels: Record<string, string>; value: number; type: string }[]; total: number };
-export default function RawMetrics({ source, accessToken }: { source: Status; accessToken: string | null }) {
-  const [rawOpen, setRawOpen] = useState(false);
+export default function RawMetrics({
+  source,
+  accessToken,
+  expanded = false,
+}: {
+  source: Status;
+  accessToken: string | null;
+  expanded?: boolean;
+}) {
+  const [rawOpen, setRawOpen] = useState(expanded);
   const [rawSearch, setRawSearch] = useState("");
   const [offset, setOffset] = useState(0);
   const raw = useQuery({

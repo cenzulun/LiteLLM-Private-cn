@@ -259,6 +259,9 @@ class Collector:
             except (ValueError, HTTPException, asyncio.TimeoutError) as error:
                 message = str(error) if isinstance(error, ValueError) else "采集失败，请检查密钥、超时或平台配置"
                 await asyncio.to_thread(store.fail, source["id"], stamp, message)
+            from realai_private.alert_history import AlertHistory
+            status = await asyncio.to_thread(source_status, source, store)
+            await asyncio.to_thread(AlertHistory(store.path.with_name('alerts.sqlite3')).record, source['id'], source['name'], source_alerts(source, status))
 
     async def run(self):
         while True:

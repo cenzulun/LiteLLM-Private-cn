@@ -6,12 +6,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import type { ParseKeys, TFunction } from "i18next";
 
 import { DataTableMultiSortHeader, DataTableSortHeader } from "@/components/shared/DataTable";
-import {
-  inheritedBudgetGates,
-  keyOwnerBudgetSource,
-  teamMemberBudgetGate,
-  type TeamMemberBudgetSource,
-} from "@/components/shared/InheritedBudgetHint";
+import { teamMemberBudgetGate, type TeamMemberBudgetSource } from "@/components/shared/InheritedBudgetHint";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -20,13 +15,11 @@ import {
   IdCell,
   IdentityCell,
   ModelsCell,
-  MoneyCell,
-  SpendBudgetCell,
   StatusBadge,
   UserPopoverCell,
   type StatusTone,
 } from "@/components/shared/table_cells";
-import { orgDetailHref, teamDetailHref } from "@/utils/entityLinks";
+import { orgDetailHref } from "@/utils/entityLinks";
 
 import { KeyResponse, Team } from "../key_team_helpers/key_list";
 import { Organization } from "../networking";
@@ -132,7 +125,8 @@ export const getKeyTableColumns = (
     header: ({ column }) => (
       <DataTableSortHeader column={column} title={t("apiKeys.keyTableColumns.columns.key")} variant="header-cycle" />
     ),
-    size: 260,
+    size: 350,
+    minSize: 300,
     enableSorting: true,
     cell: ({ row }) => {
       const status = getKeyStatus(row.original, t);
@@ -163,26 +157,6 @@ export const getKeyTableColumns = (
     size: 120,
     enableSorting: true,
     cell: (info) => <IdCell value={info.getValue() as string | null} onClick={() => onSelectKey(info.row.original)} />,
-  },
-  {
-    id: "team_alias",
-    accessorKey: "team_id",
-    meta: { title: t("apiKeys.keyTableColumns.columns.team") },
-    header: t("apiKeys.keyTableColumns.columns.team"),
-    size: 120,
-    enableSorting: false,
-    cell: (info) => {
-      const teamId = info.getValue() as string | null;
-      if (!teamId) return "-";
-      const team = allTeams.find((t) => t.team_id === teamId);
-      return (
-        <IdentityCell
-          title={team?.team_alias || teamId}
-          titleClassName={ENTITY_CELL_TITLE_CLASSES}
-          href={teamDetailHref(teamId)}
-        />
-      );
-    },
   },
   {
     id: "organization_alias",
@@ -348,9 +322,7 @@ export const getKeyTableColumns = (
               row.original.user?.user_email,
             )
           : null;
-      return (
-        <span hidden aria-hidden="true" />
-      );
+      return <span hidden aria-hidden="true" />;
     },
   },
   {

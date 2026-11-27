@@ -34,6 +34,9 @@ const client = createApiClient({
 });
 const filters = {
   view: parseAsStringLiteral(["observe", "design"] as const).withDefault("observe"),
+  section: parseAsStringLiteral(["traffic", "policy", "instances", "failover", "events"] as const).withDefault(
+    "traffic",
+  ),
   model: parseAsString.withDefault(""),
   deployment: parseAsString.withDefault(""),
   range: parseAsStringLiteral(["15", "60", "360", "1440"] as const).withDefault("60"),
@@ -158,14 +161,41 @@ export default function RoutingMonitor() {
           <TabsTrigger value="design">策略编排</TabsTrigger>
         </TabsList>
         <TabsContent value="design" className="pt-4">
-          <RouteCanvas accessToken={accessToken} userRole={isViewOnly ? "Admin Viewer" : userRole} instances={data?.instances ?? []} />
+          <RouteCanvas
+            accessToken={accessToken}
+            userRole={isViewOnly ? "Admin Viewer" : userRole}
+            instances={data?.instances ?? []}
+          />
         </TabsContent>
         <TabsContent value="observe" className="space-y-6 pt-4">
-          <LocalRoutingActivity
-            rows={data?.journal_summary ?? []}
-            minutes={minutes}
-            error={data?.events_error ?? null}
-          />
+          <div className="flex flex-wrap gap-1 border-b pb-2" role="tablist" aria-label="路由运行内容">
+            {(
+              [
+                ["traffic", "分流统计"],
+                ["policy", "路由策略"],
+                ["instances", "实例流量与压力"],
+                ["failover", "故障切换与路由依据"],
+                ["events", "近期路由记录"],
+              ] as const
+            ).map(([value, label]) => (
+              <Button
+                key={value}
+                role="tab"
+                aria-selected={filter.section === value}
+                variant={filter.section === value ? "default" : "ghost"}
+                onClick={() => void setFilter({ section: value })}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+          {filter.section === "traffic" && (
+            <LocalRoutingActivity
+              rows={data?.journal_summary ?? []}
+              minutes={minutes}
+              error={data?.events_error ?? null}
+            />
+          )}
           <div className="flex flex-wrap items-end gap-4 border-b pb-5" aria-label="路由监控筛选">
             <label className="grid min-w-40 gap-1 text-sm">
               模型
@@ -264,7 +294,7 @@ export default function RoutingMonitor() {
             }
             return (
               <>
-                <section className="space-y-3 py-2" aria-label="采集与策略状态">
+                <section hidden={filter.section !== "policy"} className="space-y-3 py-2" aria-label="采集与策略状态">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <h2 className="text-lg font-semibold">
                       {data?.state === "unconfigured" ? "路由策略" : sourceStatus}
@@ -315,6 +345,7 @@ export default function RoutingMonitor() {
                 </section>
                 {data?.metrics.some((metric) => metric.series.length > 0) && (
                   <dl
+                    hidden={filter.section !== "traffic"}
                     className="grid grid-cols-1 gap-x-8 gap-y-5 border-y py-5 sm:grid-cols-2 xl:grid-cols-3"
                     aria-label="路由统计摘要"
                   >
@@ -328,7 +359,11 @@ export default function RoutingMonitor() {
                   </dl>
                 )}
                 {Boolean(data?.instances.length) && (
-                  <section className="space-y-4 pt-4" aria-label="实例流量与压力">
+                  <section
+                    hidden={filter.section !== "instances"}
+                    className="space-y-4 pt-4"
+                    aria-label="实例流量与压力"
+                  >
                     <div className="flex flex-wrap items-end justify-between gap-2">
                       <h2 className="text-lg font-semibold">实例流量与压力</h2>
                       <p className="text-xs text-muted-foreground">
@@ -418,7 +453,11 @@ export default function RoutingMonitor() {
                   </section>
                 )}
                 {detail && (
-                  <section className="space-y-4 rounded-xl border p-5" aria-label="实例路由详情">
+                  <section
+                    hidden={filter.section !== "instances"}
+                    className="space-y-4 rounded-xl border p-5"
+                    aria-label="实例路由详情"
+                  >
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <h2 className="text-lg font-semibold">{detail.model} · 路由详情</h2>
                       <Button variant="ghost" onClick={() => setDetailId(null)}>
@@ -455,20 +494,26 @@ export default function RoutingMonitor() {
                     </dl>
                   </section>
                 )}
-                <RoutingTrend
-                  accessToken={accessToken}
-                  minutes={minutes}
-                  model={filter.model}
-                  deployment={filter.deployment}
-                  metric={filter.metric}
-                  refresh={refresh}
-                  setMetric={(value) =>
-                    void setFilter({
-                      metric: value as typeof filter.metric,
-                    })
-                  }
-                />
-                <section className="space-y-4 border-t pt-6" aria-label="故障切换与路由依据">
+                <div hidden={filter.section !== "traffic"}>
+                  <RoutingTrend
+                    accessToken={accessToken}
+                    minutes={minutes}
+                    model={filter.model}
+                    deployment={filter.deployment}
+                    metric={filter.metric}
+                    refresh={refresh}
+                    setMetric={(value) =>
+                      void setFilter({
+                        metric: value as typeof filter.metric,
+                      })
+                    }
+                  />
+                </div>
+                <section
+                  hidden={filter.section !== "failover"}
+                  className="space-y-4 border-t pt-6"
+                  aria-label="故障切换与路由依据"
+                >
                   <h2 className="text-lg font-semibold">故障切换与路由依据</h2>
                   <dl className="grid gap-4 text-sm sm:grid-cols-2 xl:grid-cols-4">
                     <div>
@@ -525,7 +570,11 @@ export default function RoutingMonitor() {
                   </div>
                 </section>
                 {Boolean(data?.events.length || data?.events_error) && (
-                  <section className="space-y-4 border-t pt-6" aria-label="近期路由记录">
+                  <section
+                    hidden={filter.section !== "events"}
+                    className="space-y-4 border-t pt-6"
+                    aria-label="近期路由记录"
+                  >
                     <div>
                       <h2 className="text-lg font-semibold">近期路由记录</h2>
                       <p className="mt-1 text-xs text-muted-foreground">{data?.journal_limit}</p>

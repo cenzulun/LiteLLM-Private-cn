@@ -10,7 +10,7 @@ import type { RoutingInstance } from "@/components/routing_monitor/types";
 import { strategies } from "@/components/routing_monitor/types";
 import GraphEditor from "./GraphEditor";
 import PressureRouting from "./PressureRouting";
-import { compileGraph, defaults, graphFromSettings, type Configuration, type Graph, type RouteSettings } from "./graph";
+import { compileGraph, defaults, graphFromSettings, nextNodePosition, type Configuration, type Graph, type RouteSettings } from "./graph";
 const client = createApiClient({ getBaseUrl: () => getProxyBaseUrl() ?? "" });
 type Draft = { graph: Graph; settings: RouteSettings; revision: number };
 export default function RouteCanvas({
@@ -30,6 +30,9 @@ export default function RouteCanvas({
   const [message, setMessage] = useState("");
   const [failed, setFailed] = useState(false);
   const [model, setModel] = useState("");
+  const [editor, setEditor] = useState<"canvas" | "code">("canvas");
+  const [code, setCode] = useState<string | null>(null);
+  const [codePending, setCodePending] = useState(false);
   const configuration = useQuery({
     queryKey: ["online-routing-configuration", accessToken],
     enabled: Boolean(accessToken),
@@ -48,10 +51,14 @@ export default function RouteCanvas({
   });
   const models = [...new Set(deployments.data?.deployments.map((item) => item.model) ?? [])];
   const settings = draft?.settings ?? configuration.data?.settings ?? defaults;
-  const graph = draft?.graph ?? configuration.data?.canvas ?? graphFromSettings(settings, models);
+  const storedGraph = draft?.graph ?? configuration.data?.canvas;
+  const graph = storedGraph ?? graphFromSettings(settings, models);
   const revision = draft?.revision ?? configuration.data?.revision ?? 0;
   const compiled = compileGraph(graph, settings);
-  const body = { revision, yaml_text: JSON.stringify({ router_settings: compiled }, null, 2), canvas: graph };
+  const body =
+    editor === "code"
+      ? { revision, yaml_text: code ?? JSON.stringify({ router_settings: compiled }, null, 2) }
+      : { revision, yaml_text: JSON.stringify({ router_settings: compiled }, null, 2), canvas: graph };
   const stamp = JSON.stringify(body);
   const change = (change: Partial<Draft>) => {
     setDraft({ graph, settings, revision, ...change });
@@ -77,6 +84,8 @@ export default function RouteCanvas({
       else {
         setDraft(null);
         setValidated(null);
+        setCode(null);
+        setCodePending(false);
         await cache.invalidateQueries({
           predicate: (query) =>
             ["online-routing-configuration", "private-routing", "routing-dashboard"].includes(
@@ -101,6 +110,8 @@ export default function RouteCanvas({
     setDraft(null);
     setValidated(null);
     setMessage("");
+    setCode(null);
+    setCodePending(false);
     void configuration.refetch();
   };
   const descriptions: Record<string, string> = {
@@ -118,8 +129,75 @@ export default function RouteCanvas({
     { key: "cooldown_time", label: "故障冷却（秒）", min: 1, max: 3600 },
     { key: "retry_after", label: "重试间隔（秒）", min: 0, max: 120 },
   ] as const;
+  const editCode = (text: string) => {
+    setCode(text);
+    setCodePending(true);
+    setValidated(null);
+  };
+  const switchEditor = async (value: "canvas" | "code") => {
+    if (value === editor) return;
+    if (value === "code") {
+      setCode(JSON.stringify({ router_settings: compiled }, null, 2));
+      setEditor(value);
+      setValidated(null);
+      return;
+    }
+    if (!codePending) {
+      setEditor(value);
+      setValidated(null);
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      const result = await client.post<{ settings: RouteSettings }>("/private/routing/preview", {
+        accessToken,
+        body: { revision, yaml_text: code ?? "" },
+      });
+      const next = graphFromSettings(result.settings, models);
+      const positioned = {
+        ...next,
+        nodes: next.nodes.map((node) => ({
+          ...node,
+          ...Object.fromEntries(
+            Object.entries(graph.nodes.find((old) => old.model === node.model) ?? {}).filter(
+              ([key]) => key === "x" || key === "y",
+            ),
+          ),
+        })),
+      };
+      change({ settings: result.settings, graph: positioned });
+      setCodePending(false);
+      setEditor(value);
+    } catch (error) {
+      setFailed(true);
+      setMessage(error instanceof Error ? error.message : "配置格式无效，请校验后切换。");
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <section className="monitor-surface space-y-4 p-4" aria-label="可视化路由配置">
+      <div className="flex gap-2" role="tablist" aria-label="路由编辑方式">
+        <Button
+          role="tab"
+          aria-selected={editor === "canvas"}
+          variant={editor === "canvas" ? "default" : "ghost"}
+          disabled={busy}
+          onClick={() => void switchEditor("canvas")}
+        >
+          画布编排
+        </Button>
+        <Button
+          role="tab"
+          aria-selected={editor === "code"}
+          variant={editor === "code" ? "default" : "ghost"}
+          disabled={busy}
+          onClick={() => void switchEditor("code")}
+        >
+          高级配置文件编辑
+        </Button>
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" disabled={!editable || busy} onClick={() => void publish("preview")}>
           校验编排
@@ -172,109 +250,137 @@ export default function RouteCanvas({
           );
         return (
           <>
-            <div className="grid min-w-0 gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
-              <aside className="space-y-5" aria-label="路由参数">
-                <label className="grid gap-2 text-sm font-medium">
-                  负载均衡策略
-                  <select
-                    className="monitor-select w-full"
-                    value={settings.routing_strategy}
-                    disabled={!editable || busy}
-                    onChange={(event) => change({ settings: { ...settings, routing_strategy: event.target.value } })}
-                  >
-                    {["simple-shuffle", "least-busy", "latency-based-routing", "usage-based-routing-v2"].map(
-                      (value) => (
-                        <option key={value} value={value}>
-                          {strategies[value]}
-                        </option>
-                      ),
-                    )}
-                  </select>
-                </label>
-                <p className="text-xs leading-5 text-muted-foreground">{descriptions[settings.routing_strategy]}</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {numbers.map((field) => (
-                    <label className="grid gap-2 text-xs" key={field.key}>
-                      {field.label}
-                      <Input
-                        type="number"
-                        min={field.min}
-                        max={field.max}
-                        step={1}
-                        disabled={!editable || busy}
-                        value={settings[field.key]}
-                        onChange={(event) =>
-                          change({ settings: { ...settings, [field.key]: Number(event.target.value) } })
-                        }
-                      />
-                    </label>
-                  ))}
-                </div>
-                <label className="flex items-start gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={settings.enable_weighted_failover}
-                    disabled={!editable || busy}
-                    onChange={(event) =>
-                      change({ settings: { ...settings, enable_weighted_failover: event.target.checked } })
-                    }
-                    className="mt-1 size-4 accent-primary"
-                  />
-                  按权重处理故障切换
-                </label>
-                <div className="space-y-3 border-t pt-4">
-                  <label className="grid gap-2 text-sm">
-                    添加模型节点
+            {editor === "code" ? (
+              <label className="grid gap-2 text-sm">
+                路由配置片段
+                <textarea
+                  className="min-h-[560px] w-full rounded-md border bg-background p-4 font-mono text-sm"
+                  aria-label="路由配置片段"
+                  value={code ?? body.yaml_text}
+                  readOnly={!editable}
+                  onChange={(event) => editCode(event.target.value)}
+                />
+                <span className="text-xs text-muted-foreground">
+                  与画布使用同一份草稿、校验及发布流程。切回画布前会校验并同步节点与备用关系。
+                </span>
+              </label>
+            ) : (
+              <div className="grid min-w-0 gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
+                <aside className="space-y-5" aria-label="路由参数">
+                  <label className="grid gap-2 text-sm font-medium">
+                    负载均衡策略
                     <select
                       className="monitor-select w-full"
-                      disabled={!editable || busy || !available.length}
-                      value={selected}
-                      onChange={(event) => setModel(event.target.value)}
+                      value={settings.routing_strategy}
+                      disabled={!editable || busy}
+                      onChange={(event) => change({ settings: { ...settings, routing_strategy: event.target.value } })}
                     >
-                      {!available.length && <option value="">全部已接入模型均在画布中</option>}
-                      {available.map((name) => (
-                        <option key={name}>{name}</option>
-                      ))}
+                      {["simple-shuffle", "least-busy", "latency-based-routing", "usage-based-routing-v2"].map(
+                        (value) => (
+                          <option key={value} value={value}>
+                            {strategies[value]}
+                          </option>
+                        ),
+                      )}
                     </select>
                   </label>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={!editable || busy || !selected}
-                    onClick={() =>
-                      change({
-                        graph: {
-                          ...graph,
-                          nodes: [
-                            ...graph.nodes,
-                            {
-                              id: globalThis.crypto?.randomUUID?.() ?? `node-${Date.now()}`,
-                              model: selected,
-                              x: 440 + (graph.nodes.length % 3) * 280,
-                              y: 40 + Math.floor(graph.nodes.length / 3) * 180,
-                            },
-                          ],
-                        },
-                      })
-                    }
-                  >
-                    新增模型节点
-                  </Button>
-                </div>
-                <PressureRouting
-                  accessToken={accessToken}
+                  <p className="text-xs leading-5 text-muted-foreground">{descriptions[settings.routing_strategy]}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {numbers.map((field) => (
+                      <label className="grid gap-2 text-xs" key={field.key}>
+                        {field.label}
+                        <Input
+                          type="number"
+                          min={field.min}
+                          max={field.max}
+                          step={1}
+                          disabled={!editable || busy}
+                          value={settings[field.key]}
+                          onChange={(event) =>
+                            change({ settings: { ...settings, [field.key]: Number(event.target.value) } })
+                          }
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <label className="flex items-start gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={settings.enable_weighted_failover}
+                      disabled={!editable || busy}
+                      onChange={(event) =>
+                        change({ settings: { ...settings, enable_weighted_failover: event.target.checked } })
+                      }
+                      className="mt-1 size-4 accent-primary"
+                    />
+                    按权重处理故障切换
+                  </label>
+                  <div className="space-y-3 border-t pt-4">
+                    <label className="grid gap-2 text-sm">
+                      添加模型节点
+                      <select
+                        className="monitor-select w-full"
+                        disabled={!editable || busy || !available.length}
+                        value={selected}
+                        onChange={(event) => setModel(event.target.value)}
+                      >
+                        {!available.length && <option value="">全部已接入模型均在画布中</option>}
+                        {available.map((name) => (
+                          <option key={name}>{name}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!editable || busy || !selected}
+                      onClick={() =>
+                        change({
+                          graph: {
+                            ...graph,
+                            nodes: [
+                              ...graph.nodes,
+                              {
+                                id: globalThis.crypto?.randomUUID?.() ?? `node-${Date.now()}`,
+                                model: selected,
+                                ...nextNodePosition(graph),
+                              },
+                            ],
+                          },
+                        })
+                      }
+                    >
+                      新增模型节点
+                    </Button>
+                    {!available.length && (
+                      <p className="text-xs text-muted-foreground">
+                        已接入模型均已加入。可移除画布节点后重新添加，或先接入新的模型服务。
+                      </p>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={!editable || busy || graph.nodes.length === 0}
+                      onClick={() => change({ graph: { nodes: [], edges: [] } })}
+                    >
+                      清空画布重新编排
+                    </Button>
+                  </div>
+                  <PressureRouting
+                    accessToken={accessToken}
+                    editable={editable && !busy}
+                    strategy={configuration.data?.settings?.routing_strategy ?? defaults.routing_strategy}
+                  />
+                </aside>
+                <GraphEditor
+                  graph={graph}
+                  change={(value) => change({ graph: value })}
                   editable={editable && !busy}
-                  strategy={configuration.data?.settings?.routing_strategy ?? defaults.routing_strategy}
+                  strategy={settings.routing_strategy}
+                  instances={instances}
                 />
-              </aside>
-              <GraphEditor
-                graph={graph}
-                change={(value) => change({ graph: value })}
-                editable={editable && !busy}
-                strategy={settings.routing_strategy}
-                instances={instances}
-              />
-            </div>
+              </div>
+            )}
 
             {!editable && <p className="text-sm text-muted-foreground">当前账号为只读权限。</p>}
             <details className="text-xs text-muted-foreground">

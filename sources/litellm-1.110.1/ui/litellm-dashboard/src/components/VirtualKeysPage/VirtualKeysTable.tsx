@@ -30,6 +30,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import type { ParseKeys } from "i18next";
 import { useTranslation } from "react-i18next";
 
+import KeyActions from "./KeyActions";
 import { KeyResponse, Team } from "../key_team_helpers/key_list";
 import KeyInfoView from "../templates/key_info_view";
 import { getKeyTableColumns, KEY_TABLE_HIDDEN_COLUMNS, KEY_TABLE_SORT_FIELDS } from "./keyTableColumns";
@@ -166,7 +167,27 @@ export function VirtualKeysTable({ headerActions }: VirtualKeysTableProps) {
     }),
     [allTeams, organizations, teamMemberBudgets, setSelectedKeyId, applyUserBudgetToTeamKeys],
   );
-  const columns = useMemo(() => getKeyTableColumns(columnDeps, t), [columnDeps, t]);
+  const columns = useMemo(
+    () => [
+      ...getKeyTableColumns(columnDeps, t)
+        .filter((column) => column.id !== "team_alias")
+        .map((column) => {
+          const widths: Record<string, number> = {key_alias: 340, user: 120, created_at: 110, last_active: 110, models: 180};
+          return column.id && widths[column.id] ? {...column,size:widths[column.id],minSize:column.id === "key_alias"?280:90} : column;
+        }),
+      {
+        id: "operations",
+        header: "操作",
+        enableHiding: false,
+        size: 220,
+        meta: {pinned: "right" as const},
+        cell: ({ row }: { row: { original: KeyResponse } }) => (
+          <KeyActions item={row.original} changed={() => void refetch()} />
+        ),
+      },
+    ],
+    [columnDeps, t, refetch],
+  );
 
   const selectedKeyFromList = useMemo(
     () => keyList.find((key) => key.token === selectedKeyId),
