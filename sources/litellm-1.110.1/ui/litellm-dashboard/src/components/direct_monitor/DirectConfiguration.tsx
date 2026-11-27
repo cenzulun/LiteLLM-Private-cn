@@ -58,6 +58,11 @@ export default function DirectConfiguration({
   };
   const remove = () => {
     if (!active) return;
+    if (active.automatic) {
+      update(active.id, { enabled: false });
+      setMessage("模型自动关联的采集源已在草稿中停用，保存后生效；模型登记保持不变。");
+      return;
+    }
     setDraft({ ...settings, sources: settings.sources.filter((source) => source.id !== active.id) });
     setSelectedId("");
     setMessage("已从草稿移除，保存后生效。");
@@ -161,6 +166,15 @@ export default function DirectConfiguration({
           <details>
             <summary className="cursor-pointer text-sm font-medium">采集与路由全局设置</summary>
             <div className="mt-4 flex flex-wrap items-center gap-5">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={settings.automatic_discovery !== false}
+                  disabled={!editable || busy}
+                  onChange={(event) => setDraft({ ...settings, automatic_discovery: event.target.checked })}
+                />
+                自动关联已登记模型的指标接口
+              </label>
               <label className={fieldClass}>
                 历史保留天数
                 <Input
@@ -225,33 +239,60 @@ export default function DirectConfiguration({
                     required
                     type="url"
                     value={source.url}
-                    onChange={(event) => update(source.id, { url: event.target.value })}
+                    onChange={(event) => update(source.id, { url: event.target.value, automatic: false })}
                     placeholder="http://模型实例:端口/metrics"
                   />
                   <span className="text-xs text-muted-foreground">
-                    填写网关容器可访问的独立实例地址；支持企业自用地址段，地址中不填写密钥。
+                    {source.automatic
+                      ? "已按模型地址自动关联；修改后使用自定义指标地址。"
+                      : "填写网关容器可访问的独立实例指标地址。"}
                   </span>
                 </label>
-                <label className={fieldClass}>
-                  API Key（选填）
+                <div className={fieldClass}>
+                  <label htmlFor={`source-key-${source.id}`}>API Key（选填）</label>
                   <Input
+                    id={`source-key-${source.id}`}
                     type="password"
                     autoComplete="new-password"
                     maxLength={4096}
                     value={source.api_key ?? ""}
-                    onChange={(event) => update(source.id, { api_key: event.target.value })}
+                    onChange={(event) => update(source.id, { api_key: event.target.value, inherit_api_key: false })}
                     placeholder={source.has_api_key ? "已保存，留空保留" : "填写模型指标接口的密钥，无鉴权时留空"}
                   />
                   <span className="text-xs text-muted-foreground">
-                    通过 Authorization: Bearer 发送，不是平台登录密码。
+                    {source.inherit_api_key
+                      ? "后台复用已登记模型的密钥，修改模型密钥后自动同步。"
+                      : "通过 Authorization: Bearer 发送。"}
                   </span>
-                </label>
+                  {source.deployment_id && (
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={source.inherit_api_key === true}
+                        onChange={(event) =>
+                          update(source.id, {
+                            inherit_api_key: event.target.checked,
+                            api_key: "",
+                            clear_api_key: false,
+                          })
+                        }
+                      />
+                      复用模型调用密钥
+                    </label>
+                  )}
+                </div>
                 <label className={fieldClass}>
                   关联模型部署
                   <select
                     className={selectClass}
                     value={source.deployment_id}
-                    onChange={(event) => update(source.id, { deployment_id: event.target.value })}
+                    onChange={(event) =>
+                      update(source.id, {
+                        deployment_id: event.target.value,
+                        automatic: false,
+                        inherit_api_key: Boolean(event.target.value) && source.inherit_api_key,
+                      })
+                    }
                   >
                     <option value="">暂不关联，仅展示监控</option>
                     {deployments.data?.deployments.map((item) => (

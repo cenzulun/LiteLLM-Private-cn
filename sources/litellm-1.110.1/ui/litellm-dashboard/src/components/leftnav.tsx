@@ -326,6 +326,7 @@ const menuGroups: MenuGroup[] = [
     items: [
       { key: "inference-monitor", page: "inference-monitor", label: "推理监控", icon: <Activity {...ICON} />, roles: all_admin_roles },
       { key: "resource-monitor", page: "resource-monitor", label: "引擎与昇腾资源", icon: <Server {...ICON} />, roles: all_admin_roles },
+      { key: "reports", page: "reports", label: "报告中心", icon: <FileText {...ICON} />, roles: all_admin_roles },
       { key: "routing-monitor", page: "routing-monitor", label: "智能路由与负载均衡", icon: <Route {...ICON} />, roles: all_admin_roles },
       { key: "motor", page: "motor", label: "推理调度", icon: <Route {...ICON} />, roles: all_admin_roles },
       {

@@ -44,6 +44,8 @@ class DirectSource(BaseModel):
     queue_threshold: int = Field(default=20, ge=1, le=100000)
     cache_threshold: float = Field(default=90, ge=1, le=100)
     latency_threshold: float = Field(default=30, ge=0.01, le=3600)
+    automatic: bool = False
+    inherit_api_key: bool = False
 
     @field_validator("url")
     @classmethod
@@ -70,6 +72,7 @@ class DirectSettings(BaseModel):
     sources: list[DirectSource] = Field(default_factory=list, max_length=100)
     retention_days: int = Field(default=7, ge=1, le=30)
     routing_enabled: bool = False
+    automatic_discovery: bool = True
 
     @model_validator(mode="after")
     def unique_sources(self):
@@ -94,25 +97,31 @@ def cipher():
 
 
 def fingerprint(source):
+    from realai_private.model_monitor_sources import credential_stamp
     identity = {key: source.get(key) for key in ("url", "kind", "deployment_id", "model_name", "key_ciphertext")}
+    if source.get("inherit_api_key"):
+        identity["inherited_credential"] = credential_stamp(source)
     return hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
 
 
 def public_settings(document):
+    from realai_private.model_monitor_sources import deployment_key
     return {**document, "sources": [{**{key: value for key, value in source.items() if key != "key_ciphertext"},
-                                     "has_api_key": bool(source.get("key_ciphertext"))} for source in document.get("sources", [])]}
+                                     "has_api_key": bool(source.get("key_ciphertext") or (source.get("inherit_api_key") and deployment_key(source.get("deployment_id"))))} for source in document.get("sources", [])]}
 
 
 async def read_settings(repository):
+    from realai_private.model_monitor_sources import automatic_sources
     row = await repository.get_param(CONFIG_KEY)
     if not row:
-        return {"sources": [], "retention_days": 7, "routing_enabled": False}
+        return {"sources": automatic_sources([]), "retention_days": 7, "routing_enabled": False, "automatic_discovery": True}
     document = row.param_value
     try:
         checked = DirectSettings.model_validate({**document, "sources": [{key: value for key, value in source.items() if key != "key_ciphertext"} for source in document["sources"]]})
-        return {**checked.model_dump(exclude={"sources"}), "sources": [
+        sources = [
             {**source.model_dump(exclude={"api_key", "clear_api_key"}), "key_ciphertext": original.get("key_ciphertext", "")}
-            for source, original in zip(checked.sources, document["sources"])]}
+            for source, original in zip(checked.sources, document["sources"])]
+        return {**checked.model_dump(exclude={"sources"}), "sources": automatic_sources(sources, checked.automatic_discovery)}
     except (ValueError, TypeError, KeyError):
         raise HTTPException(503, "直接采集配置无法读取，请检查数据库配置") from None
 
@@ -131,15 +140,31 @@ def prepare_settings(value, previous):
     for source in value.sources:
         data = source.model_dump(exclude={"api_key", "clear_api_key"})
         key = source.api_key.get_secret_value() if source.api_key else ""
+        if source.inherit_api_key and not source.deployment_id:
+            raise HTTPException(422, "复用模型密钥需要绑定已登记的部署副本")
+        if key or source.clear_api_key:
+            data["inherit_api_key"] = False
         encrypted = "" if source.clear_api_key else cipher().encrypt(key.encode()).decode() if key else old.get(source.id, {}).get("key_ciphertext", "")
         sources.append({**data, "key_ciphertext": encrypted})
-    return {"sources": sources, "retention_days": value.retention_days, "routing_enabled": value.routing_enabled}
+    return {"sources": sources, "retention_days": value.retention_days, "routing_enabled": value.routing_enabled, "automatic_discovery": value.automatic_discovery}
 
 
 async def fetch_source(source, transport=None):
     headers = {"Accept": "text/plain, application/openmetrics-text"}
     try:
-        if source.get("key_ciphertext"):
+        if source.get("inherit_api_key"):
+            from realai_private.model_monitor_sources import deployment_key, registered_deployment
+            row = registered_deployment(source.get("deployment_id"))
+            if row is None:
+                raise ValueError("关联模型部署不存在，请重新绑定")
+            origin = urlsplit((row.get("litellm_params") or {}).get("api_base", ""))
+            target = urlsplit(source["url"])
+            if (origin.scheme, origin.hostname) != (target.scheme, target.hostname):
+                raise ValueError("复用模型密钥时，指标地址须使用模型服务的相同协议与主机")
+            key = deployment_key(source.get("deployment_id"))
+            if key:
+                headers["Authorization"] = "Bearer " + key
+        elif source.get("key_ciphertext"):
             headers["Authorization"] = "Bearer " + cipher().decrypt(source["key_ciphertext"].encode()).decode()
         async with httpx.AsyncClient(timeout=source["timeout_seconds"], verify=source["verify_tls"], follow_redirects=False, trust_env=False, transport=transport) as client:
             async with client.stream("GET", source["url"], headers=headers) as response:

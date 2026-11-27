@@ -314,6 +314,7 @@ def install(app: object) -> None:
     from realai_private.fleet import fleet_router
     from realai_private.motor import motor_router
     from realai_private.routing_dashboard import routing_dashboard_router
+    from realai_private.reports import reports_router, install_reports
 
     app.add_middleware(PrivateDeploymentMiddleware)
     app.include_router(monitor_router())
@@ -322,7 +323,9 @@ def install(app: object) -> None:
     app.include_router(motor_router())
     app.include_router(routing_dashboard_router())
     app.include_router(direct_monitor_router())
+    app.include_router(reports_router())
     install_collector(app)
+    install_reports(app)
 
     router: Final = getattr(app, "router", None)
     startup: Final = getattr(router, "on_startup", None)

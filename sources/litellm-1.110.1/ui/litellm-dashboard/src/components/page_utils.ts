@@ -75,5 +75,6 @@ export const getAvailablePages = (): PageMetadata[] => {
   });
 
   const allowed = new Set(["home", "api-keys", "models", "guardrails", "policies", "usage", "alerts", "logs", "teams", "users", "access-groups", "budgets", "caching", "inference-monitor", "resource-monitor", "routing-monitor", "guardrails-monitor", "motor"]);
+  allowed.add("reports");
   return pages.filter(page => allowed.has(page.page) && !["budgets", "cost-tracking"].includes(page.page));
 };

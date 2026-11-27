@@ -113,6 +113,9 @@ for name in ['完整部署说明.md', 'rebuild.sh']:
 form_guide = (ROOT / 'build-tools/表单填写说明-1.0.12.md').read_text(encoding='utf8').replace('1.0.12', VERSION)
 (OUT / '表单填写与升级说明.md').write_text(form_guide, encoding='utf8', newline='\n')
 copy(ROOT / 'docs/直接采集监控接入.md', OUT / '直接采集监控接入.md')
+report_guide = ROOT / 'docs/报告中心与模型监控关联.md'
+if report_guide.exists():
+    copy(report_guide, OUT / report_guide.name)
 copy(ROOT / f'docs/版本说明-{VERSION}.md', OUT / '本版更新说明.md')
 layout_guide = ROOT / 'docs/全站页面布局规范.md'
 if layout_guide.exists():
@@ -133,6 +136,8 @@ for pattern in ['test-direct-monitor-validated.log', 'test-direct-routing.log', 
     for source in (ROOT / 'build-tools').glob(pattern):
         copy(source, verification / source.name)
 for pattern in [f'release-validation-{VERSION}.json', f'test-ui*-{VERSION}.log', f'test-trends-final-{VERSION}.log',
+                f'test-reports-{VERSION}.log', f'test-auto-monitor-{VERSION}.log', f'test-report-ui-final-{VERSION}.log',
+                f'live-reports-*-{VERSION}.json', f'design-reports-{VERSION}.json',
                 f'test-layout-{VERSION}.log', f'lint-layout-final-{VERSION}.log',
                 f'layout-audit-final-{VERSION}.json', f'layout-mobile-final-{VERSION}.json',
                 f'test-arm64-canvas-{VERSION}.log', f'live-canvas-{VERSION}.json', f'browser-monitor-{VERSION}.log',

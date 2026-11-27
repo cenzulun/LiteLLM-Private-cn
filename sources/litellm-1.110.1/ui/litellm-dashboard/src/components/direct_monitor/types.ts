@@ -15,8 +15,10 @@ export type Source = {
   queue_threshold: number;
   cache_threshold: number;
   latency_threshold: number;
+  automatic?: boolean;
+  inherit_api_key?: boolean;
 };
-export type Settings = { sources: Source[]; retention_days: number; routing_enabled: boolean };
+export type Settings = { sources: Source[]; retention_days: number; routing_enabled: boolean; automatic_discovery?: boolean };
 export type Metric = { key: string; label: string; unit: string; value: number | null; scope: string; message: string };
 export type Status = {
   id: string;
