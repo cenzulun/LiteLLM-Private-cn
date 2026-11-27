@@ -117,6 +117,9 @@ report_guide = ROOT / 'docs/报告中心与模型监控关联.md'
 if report_guide.exists():
     copy(report_guide, OUT / report_guide.name)
 copy(ROOT / f'docs/版本说明-{VERSION}.md', OUT / '本版更新说明.md')
+acceptance_note = ROOT / f'docs/验收记录-{VERSION}.md'
+if acceptance_note.exists():
+    copy(acceptance_note, OUT / '本版验收记录.md')
 layout_guide = ROOT / 'docs/全站页面布局规范.md'
 if layout_guide.exists():
     copy(layout_guide, OUT / layout_guide.name)
@@ -146,6 +149,7 @@ for pattern in [f'release-validation-{VERSION}.json', f'test-ui*-{VERSION}.log',
                 f'test-ui-acceptance-{VERSION}.log', f'lint-ui-final-{VERSION}.log',
                 f'test-canvas-final-{VERSION}.log', f'test-layout-comments-{VERSION}.log',
                 f'design-comments-{VERSION}.json',
+                f'live-alerts-{VERSION}.json',
                 f'test-archive-capacity-{VERSION}.log',
                 f'live-schedules-*-{VERSION}.json',
                 f'test-monitor-auto-{VERSION}.log', f'lint-reports-final-{VERSION}.log',
