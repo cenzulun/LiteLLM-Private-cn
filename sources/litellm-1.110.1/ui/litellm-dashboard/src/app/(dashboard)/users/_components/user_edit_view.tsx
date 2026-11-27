@@ -3,19 +3,15 @@ import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import { all_admin_roles } from "@/utils/roles";
-import BudgetDurationDropdown from "@/components/common_components/budget_duration_dropdown";
 import { ModelMaxBudget, ModelMaxBudgetField } from "@/components/key_team_helpers/ModelMaxBudgetEditor";
 import { modelMaxBudgetUpdate } from "@/components/key_team_helpers/modelMaxBudgetPayload";
 import { useSeededState } from "@/components/key_team_helpers/useSeededState";
 import { getModelDisplayName } from "@/components/key_team_helpers/fetch_available_models_team_key";
-import MCPServerSelector from "@/components/mcp_server_management/MCPServerSelector";
-import MCPToolPermissions from "@/components/mcp_server_management/MCPToolPermissions";
 import type { ObjectPermission } from "@/components/object_permission_types";
 import { MultiSelect } from "@/components/shared/MultiSelect";
 import { FieldGroup } from "@/components/ui/field";
 import { FormField } from "@/components/shared/form/FormField";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,7 +33,7 @@ const rateLimitField = (t: TFunction) => {
 interface UserEditViewProps {
   userData: any;
   onCancel: () => void;
-  onSubmit: (values: any) => void;
+  onSubmit: (values: any) => void | Promise<void>;
   teams: any[] | null;
   accessToken: string | null;
   userID: string | null;
@@ -47,6 +43,7 @@ interface UserEditViewProps {
   isBulkEdit?: boolean;
   objectPermission?: ObjectPermission | null;
   premiumUser?: boolean;
+  showModelBudgets?: boolean;
 }
 
 const MCP_SELECTION_SHAPE = z.object({
@@ -163,6 +160,7 @@ export function UserEditView({
   isBulkEdit = false,
   objectPermission,
   premiumUser = false,
+  showModelBudgets = true,
 }: UserEditViewProps) {
   const { t } = useTranslation();
   const canEditMcpPermissions = !isBulkEdit && all_admin_roles.includes(userRole || "");
@@ -189,26 +187,28 @@ export function UserEditView({
     }
   };
 
-  const handleSubmit = (values: UserEditFormValues) => {
+  const handleSubmit = async (values: UserEditFormValues) => {
     const metadata = parseMetadata(values.metadata);
     if (!metadata.ok) {
       return;
     }
 
-    const { tpm_limit: tpmLimitInput, rpm_limit: rpmLimitInput, ...formValues } = values;
+    const { tpm_limit: tpmLimitInput, rpm_limit: rpmLimitInput, max_budget: maxBudgetInput, budget_duration: budgetDuration, ...formValues } = values;
     const modelBudgets = modelMaxBudgetUpdate(modelMaxBudget, userData.user_info?.model_max_budget);
     const tpmLimit = changedLimit(tpmLimitInput, userData.user_info?.tpm_limit);
     const rpmLimit = changedLimit(rpmLimitInput, userData.user_info?.rpm_limit);
     const payload = {
       ...formValues,
       ...("metadata" in values ? { metadata: metadata.value } : {}),
-      ...(modelBudgets !== undefined && { model_max_budget: modelBudgets }),
+      ...(showModelBudgets && modelBudgets !== undefined && { model_max_budget: modelBudgets }),
       ...(tpmLimit !== undefined && { tpm_limit: tpmLimit }),
       ...(rpmLimit !== undefined && { rpm_limit: rpmLimit }),
-      max_budget:
-        unlimitedBudget || values.max_budget === "" || values.max_budget === undefined ? null : values.max_budget,
+      ...(showModelBudgets && {
+        max_budget: unlimitedBudget || maxBudgetInput === "" || maxBudgetInput === undefined ? null : maxBudgetInput,
+        budget_duration: budgetDuration,
+      }),
     };
-    onSubmit(payload);
+    await onSubmit(payload);
   };
 
   const modelOptions = [
@@ -341,7 +341,7 @@ export function UserEditView({
 
           {/* Bulk edit forwards a fixed field list and has no single stored budget to
               diff against, so the editor would silently discard whatever was typed. */}
-          {!isBulkEdit && (
+          {!isBulkEdit && showModelBudgets && (
             <ModelMaxBudgetField
               key={userData.user_id}
               premiumUser={premiumUser}
@@ -375,10 +375,10 @@ export function UserEditView({
         </FieldGroup>
 
         <div className="mt-6 flex justify-end gap-2">
-          <Button variant="secondary" type="button" onClick={onCancel}>
+          <Button variant="secondary" type="button" onClick={onCancel} disabled={form.formState.isSubmitting}>
             {t("users.editView.actions.cancel")}
           </Button>
-          <Button type="submit">{t("users.editView.actions.save")}</Button>
+          <Button type="submit" disabled={form.formState.isSubmitting} aria-busy={form.formState.isSubmitting}>{t("users.editView.actions.save")}</Button>
         </div>
       </form>
     </TooltipProvider>

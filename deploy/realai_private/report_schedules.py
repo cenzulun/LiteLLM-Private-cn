@@ -19,7 +19,7 @@ class ScheduleRequest(BaseModel):
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
     name: str = Field(min_length=1, max_length=80)
     model: str = Field(min_length=1, max_length=256)
-    instructions: str = Field(default='', max_length=2000)
+    instructions: str = Field(default='', max_length=10000)
     cadence: Literal['hourly', 'daily', 'weekly'] = 'daily'
     hour: int = Field(default=9, ge=0, le=23)
     minute: int = Field(default=0, ge=0, le=59)
@@ -64,7 +64,7 @@ class ScheduleStore(ReportStore):
     def listing(self):
         with self.db() as db:
             rows = db.execute('''SELECT s.*,r.status AS last_report_status FROM report_schedules s
-                LEFT JOIN reports r ON r.id=s.last_report_id WHERE s.deleted_at IS NULL ORDER BY s.created_at DESC''')
+                LEFT JOIN reports r ON r.id=s.last_report_id AND r.deleted_at IS NULL WHERE s.deleted_at IS NULL ORDER BY s.created_at DESC''')
             return [{**dict(row), 'enabled': bool(row['enabled']), 'timezone': 'Asia/Shanghai'} for row in rows]
 
     def save(self, value, user, identifier=None, now=None):
@@ -106,8 +106,8 @@ class ScheduleStore(ReportStore):
                     raise KeyError('定时任务不存在')
             else:
                 rows = db.execute('SELECT * FROM report_schedules WHERE enabled=1 AND deleted_at IS NULL AND next_run_at<=? ORDER BY next_run_at LIMIT 100', (now,)).fetchall()
-            pending = db.execute("SELECT COUNT(*) FROM reports WHERE status IN ('queued','running')").fetchone()[0]
-            count = db.execute('SELECT COUNT(*) FROM reports').fetchone()[0]
+            pending = db.execute("SELECT COUNT(*) FROM reports WHERE status IN ('queued','running') AND deleted_at IS NULL").fetchone()[0]
+            count = db.execute('SELECT COUNT(*) FROM reports WHERE deleted_at IS NULL').fetchone()[0]
             for row in rows:
                 if row['model'] not in models:
                     message = '分析模型已移除，请编辑任务重新选择模型'

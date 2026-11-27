@@ -92,6 +92,50 @@ vi.mock("@/app/(dashboard)/hooks/mcpServers/useMCPAccessGroups", () => ({
 vi.mock("@/app/(dashboard)/hooks/mcpServers/useMCPToolsets", () => ({
   useMCPToolsets: () => ({ data: [], isLoading: false }),
 }));
+describe("用户详细信息", () => {
+  const props = { userId: "user-123", onClose: vi.fn(), accessToken: "test-token", userRole: "proxy_admin", possibleUIRoles: null };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUserGetInfoV2.mockResolvedValue({ ...MOCK_USER_DATA_NO_TEAMS, max_budget: null, model_max_budget: {} });
+    mockUserUpdateUserCall.mockResolvedValue({});
+    mockFetchMCPServers.mockResolvedValue([]);
+    mockListMCPTools.mockResolvedValue({ tools: [] });
+  });
+  it("详情标签能查看姓名并编辑、保存和重新打开", async () => {
+    render(<UserInfoView {...props} initialTab={1} />);
+    expect(await screen.findByText("Test Alias")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: /Edit Settings|编辑设置/ }));
+    fireEvent.change(await screen.findByLabelText(/User Alias|用户别名/), { target: { value: "运维管理员" } });
+    mockUserGetInfoV2.mockResolvedValue({ ...MOCK_USER_DATA_NO_TEAMS, user_alias: "运维管理员", max_budget: null, model_max_budget: {} });
+    fireEvent.click(screen.getByRole("button", { name: /Save Changes|保存更改|保存修改/ }));
+    expect(await screen.findByText("运维管理员")).toBeVisible();
+    expect(mockUserUpdateUserCall).toHaveBeenCalledWith("test-token", expect.objectContaining({ user_id: "user-123", user_alias: "运维管理员" }), null);
+    fireEvent.click(screen.getByRole("button", { name: /Edit Settings|编辑设置/ }));
+    expect(await screen.findByLabelText(/User Alias|用户别名/)).toHaveValue("运维管理员");
+    fireEvent.click(screen.getByRole("button", { name: /Cancel|取消/ }));
+    expect(screen.getByText("运维管理员")).toBeVisible();
+  });
+  it("修改用户名称保留未展示的既有额度字段", async () => {
+    mockUserGetInfoV2.mockResolvedValue({ ...MOCK_USER_DATA_NO_TEAMS, max_budget: 100, model_max_budget: { Qwen: { max_budget: 20 } } });
+    render(<UserInfoView {...props} initialTab={1} />);
+    fireEvent.click(await screen.findByRole("button", { name: /Edit Settings|编辑设置/ }));
+    fireEvent.change(await screen.findByLabelText(/User Alias|用户别名/), { target: { value: "已修改名称" } });
+    fireEvent.click(screen.getByRole("button", { name: /Save Changes|保存更改|保存修改/ }));
+    await waitFor(() => expect(mockUserUpdateUserCall).toHaveBeenCalledOnce());
+    const payload = mockUserUpdateUserCall.mock.calls[0][1];
+    expect(payload).toHaveProperty("user_alias", "已修改名称");
+    expect(payload).not.toHaveProperty("max_budget");
+    expect(payload).not.toHaveProperty("budget_duration");
+    expect(payload).not.toHaveProperty("model_max_budget");
+  });
+  it("只读账号可查看但不能通过编辑入口打开修改表单", async () => {
+    render(<UserInfoView {...props} userRole="proxy_admin_viewer" initialTab={1} startInEditMode />);
+    expect(await screen.findByText("Test Alias")).toBeVisible();
+    expect(screen.queryByRole("button", { name: /Edit Settings|编辑设置/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Save Changes|保存更改|保存修改/ })).not.toBeInTheDocument();
+  });
+});
+
 describe("UserInfoView add-to-team form", () => {
   const defaultProps = {
     userId: "user-123",

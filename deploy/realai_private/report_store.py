@@ -26,7 +26,7 @@ class ReportStore:
             lease_until REAL, worker TEXT, error TEXT, html TEXT, facts TEXT);
             CREATE INDEX IF NOT EXISTS report_created ON reports(created_at DESC);''')
         columns = {row['name'] for row in db.execute('PRAGMA table_info(reports)')}
-        for name, definition in [('parent_id', 'TEXT'), ('instructions', "TEXT NOT NULL DEFAULT ''")]:
+        for name, definition in [('parent_id', 'TEXT'), ('instructions', "TEXT NOT NULL DEFAULT ''"), ('deleted_at', 'REAL')]:
             if name not in columns:
                 try:
                     db.execute(f'ALTER TABLE reports ADD COLUMN {name} {definition}')
@@ -48,9 +48,9 @@ class ReportStore:
                 if (old['name'], old['start_at'], old['end_at'], old['created_by'], old['model'], old['instructions'], old['parent_id']) != (name, start, end, user, model, instructions, parent_id):
                     raise ValueError("报告请求编号已使用，请重新生成请求")
                 return dict(old)
-            if db.execute("SELECT COUNT(*) FROM reports WHERE status IN ('queued','running')").fetchone()[0] >= 20:
+            if db.execute("SELECT COUNT(*) FROM reports WHERE status IN ('queued','running') AND deleted_at IS NULL").fetchone()[0] >= 20:
                 raise ValueError("待生成报告较多，请稍后重试")
-            if db.execute("SELECT COUNT(*) FROM reports").fetchone()[0] >= 5000:
+            if db.execute("SELECT COUNT(*) FROM reports WHERE deleted_at IS NULL").fetchone()[0] >= 5000:
                 raise ValueError("报告数量已达上限，请联系管理员归档")
             db.execute("INSERT INTO reports(id,name,start_at,end_at,created_at,created_by,model,instructions,parent_id,facts) VALUES(?,?,?,?,?,?,?,?,?,?)",
                        (identifier, name, start, end, time.time(), user, model, instructions, parent_id, facts))
@@ -58,21 +58,21 @@ class ReportStore:
 
     def get(self, identifier):
         with self.db() as db:
-            row = db.execute("SELECT * FROM reports WHERE id=?", (identifier,)).fetchone()
+            row = db.execute("SELECT * FROM reports WHERE id=? AND deleted_at IS NULL", (identifier,)).fetchone()
         return dict(row) if row else None
 
     def listing(self, page=1, size=20):
         fields = "id,name,start_at,end_at,created_at,created_by,model,status,started_at,completed_at,error,parent_id"
         with self.db() as db:
-            total = db.execute("SELECT COUNT(*) FROM reports").fetchone()[0]
-            rows = db.execute(f"SELECT {fields} FROM reports ORDER BY created_at DESC,id LIMIT ? OFFSET ?", (size, (page - 1) * size))
+            total = db.execute("SELECT COUNT(*) FROM reports WHERE deleted_at IS NULL").fetchone()[0]
+            rows = db.execute(f"SELECT {fields} FROM reports WHERE deleted_at IS NULL ORDER BY created_at DESC,id LIMIT ? OFFSET ?", (size, (page - 1) * size))
             return {"reports": [dict(row) for row in rows], "total": total, "page": page, "page_size": size}
 
     def conversation(self, identifier):
         history = []
         with self.db() as db:
             for _ in range(21):
-                row = db.execute('SELECT id,parent_id,instructions,status,created_at,created_by,facts FROM reports WHERE id=?', (identifier,)).fetchone()
+                row = db.execute('SELECT id,parent_id,instructions,status,created_at,created_by,facts FROM reports WHERE id=? AND deleted_at IS NULL', (identifier,)).fetchone()
                 if not row:
                     break
                 record = dict(row)
@@ -91,17 +91,49 @@ class ReportStore:
             db.execute("UPDATE reports SET status='failed',error='生成任务中断或超时，请重新生成',completed_at=? WHERE status='running' AND lease_until<?", (now, now))
             if db.execute("SELECT 1 FROM reports WHERE status='running' LIMIT 1").fetchone():
                 return None
-            row = db.execute("SELECT id FROM reports WHERE status='queued' ORDER BY created_at,id LIMIT 1").fetchone()
+            row = db.execute("SELECT id FROM reports WHERE status='queued' AND deleted_at IS NULL ORDER BY created_at,id LIMIT 1").fetchone()
             if not row:
                 return None
             worker = uuid.uuid4().hex
-            db.execute("UPDATE reports SET status='running',started_at=?,lease_until=?,worker=? WHERE id=?", (now, now + 600, worker, row['id']))
+            db.execute("UPDATE reports SET status='running',started_at=?,lease_until=?,worker=? WHERE id=?", (now, now + 1800, worker, row['id']))
             result = dict(db.execute("SELECT * FROM reports WHERE id=?", (row['id'],)).fetchone())
         return result
 
     def finish(self, job, html=None, facts=None, error=None):
         with self.db() as db:
-            db.execute("UPDATE reports SET status=?,completed_at=?,html=?,facts=?,error=?,lease_until=NULL WHERE id=? AND worker=? AND status='running'",
+            db.execute("UPDATE reports SET status=?,completed_at=?,html=?,facts=COALESCE(?,facts),error=?,lease_until=NULL WHERE id=? AND worker=? AND status='running'",
                        ('failed' if error else 'completed', time.time(), html,
                         json.dumps(facts, ensure_ascii=False, allow_nan=False) if facts is not None else None,
                         error, job['id'], job['worker']))
+
+    def rename(self, identifier, name):
+        from html import escape
+        with self.db() as db:
+            db.execute('BEGIN IMMEDIATE')
+            row = db.execute('SELECT name,html,status FROM reports WHERE id=? AND deleted_at IS NULL', (identifier,)).fetchone()
+            if not row:
+                raise KeyError('报告不存在')
+            if row['status'] in ('queued', 'running'):
+                raise ValueError('报告正在生成，请完成后再修改名称')
+            html = row['html']
+            if html:
+                import re
+                html = re.sub(r'<title>.*?</title>', lambda _: '<title>' + escape(name) + '</title>', html, count=1, flags=re.S)
+                html = re.sub(r'<h1>.*?</h1>', lambda _: '<h1>' + escape(name) + '</h1>', html, count=1, flags=re.S)
+            db.execute('UPDATE reports SET name=?,html=? WHERE id=?', (name, html, identifier))
+        return self.get(identifier)
+
+    def delete(self, identifier):
+        with self.db() as db:
+            db.execute('BEGIN IMMEDIATE')
+            row = db.execute('SELECT status FROM reports WHERE id=? AND deleted_at IS NULL', (identifier,)).fetchone()
+            if not row:
+                raise KeyError('报告不存在')
+            if row['status'] in ('queued', 'running'):
+                raise ValueError('报告正在生成，请完成后再删除')
+            db.execute('UPDATE reports SET deleted_at=? WHERE id=?', (time.time(), identifier))
+
+    def checkpoint(self, job, facts):
+        with self.db() as db:
+            db.execute("UPDATE reports SET facts=? WHERE id=? AND worker=? AND status='running'",
+                       (json.dumps(facts, ensure_ascii=False, allow_nan=False), job['id'], job['worker']))

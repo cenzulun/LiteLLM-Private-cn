@@ -7,11 +7,13 @@ vi.mock("@/app/(dashboard)/hooks/useAuthorized", () => ({ default: () => ({
 }) }));
 let submitted: Record<string, unknown> | null;
 let schedules: Record<string, unknown>[];
+let reportStatus: string;
 const now = Date.now() / 1000;
 const report = { id: "5e63a528-703c-4b21-9694-9635b8f7afde", name: "运行日报", start_at: now - 3600,
   end_at: now - 1, created_at: now, created_by: "测试管理员", model: "Qwen", status: "completed", error: null };
 beforeEach(() => {
   submitted = null;
+  reportStatus = "completed";
   schedules = [];
   vi.stubGlobal("crypto", {});
   testQueryClient.clear();
@@ -26,11 +28,13 @@ beforeEach(() => {
       }
       return Response.json({ schedules });
     }
+    if (init?.method === "PATCH") { submitted = JSON.parse(String(init.body)); return Response.json({ ...report, ...submitted }); }
+    if (init?.method === "DELETE") { submitted = { deleted: report.id }; return Response.json({ removed: true }); }
     if (init?.method === "POST") { submitted = JSON.parse(String(init.body)); return Response.json({ ...report, status: "queued" }); }
     if (path.includes("/models")) return Response.json({ models: ["Qwen", "DeepSeek"] });
     if (path.includes("/conversation")) return Response.json({ messages: [{ ...report, instructions: "", summary: "已生成标准版报告" }] });
-    if (path.includes(report.id)) return Response.json({ ...report, html: "<!doctype html><html><body><h1>完整报告</h1><p>测试分析内容</p></body></html>" });
-    return Response.json({ reports: [report], total: 1 });
+    if (path.includes(report.id)) return Response.json({ ...report, status: reportStatus, html: "<!doctype html><html><body><h1>完整报告</h1><p>测试分析内容</p></body></html>" });
+    return Response.json({ reports: [{ ...report, status: reportStatus }], total: 1 });
   }));
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -65,7 +69,7 @@ describe("报告中心", () => {
     fireEvent.click(screen.getByRole("button", { name: "报告对话", exact: true }));
     expect(await screen.findByText("已生成标准版报告")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("调整要求"), { target: { value: "重点分析排队，保留图表" } });
-    fireEvent.click(screen.getByRole("button", { name: "发送并生成修订版" }));
+    fireEvent.click(screen.getByRole("button", { name: "生成" }));
     await vi.waitFor(() => expect(submitted).toEqual(expect.objectContaining({ instructions: "重点分析排队，保留图表", model: "Qwen" })));
     expect(screen.getByRole("button", { name: "返回完整预览" })).toBeInTheDocument();
   });
@@ -82,5 +86,32 @@ describe("报告中心", () => {
     fireEvent.click(screen.getByRole('button', { name: '保存任务', exact: true }));
     expect(await screen.findByRole('heading', { name: '每周运行报告', exact: true })).toBeVisible();
     expect(submitted).toEqual(expect.objectContaining({ cadence: 'weekly', weekday: 4, lookback_hours: 168, instructions: '重点比较排队与延迟', model: 'Qwen' }));
+  });
+});
+
+describe("报告维护与失败恢复", () => {
+  it("失败报告仍可填写要求并生成，面板可调宽度", async () => {
+    reportStatus = "failed";
+    renderWithProviders(<ReportsPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "修改", exact: true }));
+    const field = await screen.findByLabelText("调整要求");
+    fireEvent.change(field, { target: { value: "缩短分析并保留图表" } });
+    const divider = screen.getByRole("separator", { name: "调整报告对话宽度" });
+    expect(divider).toHaveAttribute("aria-valuenow", "360");
+    fireEvent.keyDown(divider, { key: "ArrowLeft" });
+    expect(divider).toHaveAttribute("aria-valuenow", "384");
+    fireEvent.click(screen.getByRole("button", { name: "生成", exact: true }));
+    await vi.waitFor(() => expect(submitted).toEqual(expect.objectContaining({ instructions: "缩短分析并保留图表" })));
+  });
+  it("报告列表可以重命名并确认删除", async () => {
+    renderWithProviders(<ReportsPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "重命名", exact: true }));
+    fireEvent.change(screen.getByLabelText("新报告名称"), { target: { value: "运维周报" } });
+    fireEvent.click(screen.getByRole("button", { name: "确认", exact: true }));
+    await vi.waitFor(() => expect(submitted).toEqual({ name: "运维周报" }));
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "删除", exact: true }));
+    fireEvent.click(await screen.findByRole("button", { name: "确认", exact: true }));
+    await vi.waitFor(() => expect(submitted).toEqual({ deleted: report.id }));
   });
 });

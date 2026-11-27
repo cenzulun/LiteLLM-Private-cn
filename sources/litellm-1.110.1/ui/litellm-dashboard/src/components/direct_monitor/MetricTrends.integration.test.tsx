@@ -22,3 +22,11 @@ describe("多指标趋势",()=>{
   expect(await screen.findByRole("img",{name:"前缀缓存命中率历史曲线"})).toBeVisible();
  });
 });
+
+it("七天选择实际请求七天历史，并标明有限历史覆盖", async () => {
+  renderWithProviders(<MetricTrends source={source} accessToken="test"/>);
+  await screen.findByRole("img", {name:"输出令牌速率历史曲线"});
+  fireEvent.change(screen.getByLabelText("历史时间"), {target:{value:"10080"}});
+  await waitFor(() => expect(requests.some(path => path.includes("minutes=10080"))).toBe(true));
+  expect(await screen.findByText(/有效采样：/)).toBeVisible();
+});

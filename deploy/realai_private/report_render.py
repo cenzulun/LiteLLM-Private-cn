@@ -41,9 +41,26 @@ def parse_analysis(content):
     if not isinstance(content, str) or len(content) > 50000:
         raise ValueError('模型返回无效')
     text = content.strip()
+    original = text
+    if text.startswith('<think>') and '</think>' in text:
+        text = text.split('</think>', 1)[1].strip()
     if text.startswith('```'):
         text = text.split('\n', 1)[-1].rsplit('```', 1)[0].strip()
-    result = Analysis.model_validate(json.loads(text))
+    try:
+        raw = json.loads(text)
+    except json.JSONDecodeError:
+        start = text.find('{')
+        try:
+            raw, _ = json.JSONDecoder().raw_decode(text[start:]) if start >= 0 else (None, None)
+        except json.JSONDecodeError:
+            raw = None
+    if isinstance(raw, dict):
+        result = Analysis.model_validate(raw)
+    else:
+        if '<html' in original.lower() or '<script' in original.lower() or len(text) < 40 or not any('\u3400' <= c <= '\u9fff' for c in text):
+            raise ValueError('模型返回无效')
+        return Analysis(summary=text[:2800], detail=text[2800:8500], findings=[], actions=[],
+                        limitations=['模型返回自然语言分析，已安全嵌入固定模板；未提供结构化结论与布局指令。'])
     if any(len(item) > 1500 for item in result.actions + result.limitations):
         raise ValueError('分析段落过长')
     return result

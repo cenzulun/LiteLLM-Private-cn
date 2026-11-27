@@ -30,7 +30,7 @@ import {
   ComboboxList,
 } from "@/components/ui/combobox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { hasProxyWideSpendView, rolesWithWriteAccess } from "@/utils/roles";
+import { formatUserRole, hasProxyWideSpendView, rolesWithWriteAccess, userRoleDisplayLabel } from "@/utils/roles";
 import { teamDetailHref } from "@/utils/entityLinks";
 import { BadgeLink } from "@/components/shared/BadgeLink";
 import { UserEditView } from "../user_edit_view";
@@ -38,18 +38,14 @@ import OnboardingModal, { InvitationLink } from "@/components/onboarding_link";
 import { formatNumberWithCommas, copyToClipboard as utilCopyToClipboard } from "@/utils/dataUtils";
 import { ArrowLeft, CheckIcon, CopyIcon, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "@/lib/toast";
-import { getBudgetDurationLabel } from "@/components/common_components/budget_duration_dropdown";
 import DeleteResourceModal from "@/components/common_components/DeleteResourceModal";
 import useAuthorized from "@/app/(dashboard)/hooks/useAuthorized";
-import MCPServerPermissions from "@/components/permissions/MCPServerPermissions";
 import { useMCPServers } from "@/app/(dashboard)/hooks/mcpServers/useMCPServers";
 import { useMCPToolsets } from "@/app/(dashboard)/hooks/mcpServers/useMCPToolsets";
 import { extractMcpEntitlement } from "@/components/mcp_server_management/mcpEntitlement";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import ScopedSavingsTab from "@/components/shared/ScopedSavingsTab";
 import { AutoRouterUsageView } from "@/app/(dashboard)/cost-optimization/_components/AutoRouterBenchmarksTab";
 import { useActivityDateRange } from "@/app/(dashboard)/cost-optimization/_components/useDailyActivityRange";
-import { BudgetPeriodTooltip } from "@/components/shared/BudgetPeriodTooltip";
 
 interface UserInfoViewProps {
   userId: string;
@@ -92,7 +88,8 @@ export default function UserInfoView({
   startInEditMode = false,
 }: UserInfoViewProps) {
   const { t } = useTranslation();
-  const { premiumUser, userId: signedInUserId } = useAuthorized();
+  const { premiumUser, userId: signedInUserId, isViewOnly } = useAuthorized();
+  const canEditUser = !isViewOnly && rolesWithWriteAccess.includes(userRole ?? "");
   const canViewAutoRouterUsage = hasProxyWideSpendView(userRole);
   const canViewSavings = canViewAutoRouterUsage || (Boolean(userId.trim()) && userId === signedInUserId);
   const activityDateRange = useActivityDateRange();
@@ -338,23 +335,7 @@ export default function UserInfoView({
         null,
       );
 
-      // Update local state with new values
-      setUserData({
-        ...userData,
-        user_email: formValues.user_email ?? userData.user_email,
-        user_alias: formValues.user_alias ?? userData.user_alias,
-        models: formValues.models ?? userData.models,
-        max_budget: formValues.max_budget === undefined ? userData.max_budget : formValues.max_budget,
-        tpm_limit: formValues.tpm_limit === undefined ? userData.tpm_limit : formValues.tpm_limit,
-        rpm_limit: formValues.rpm_limit === undefined ? userData.rpm_limit : formValues.rpm_limit,
-        budget_duration:
-          formValues.budget_duration === undefined ? userData.budget_duration : formValues.budget_duration,
-        metadata: formValues.metadata ?? userData.metadata,
-        model_max_budget: formValues.model_max_budget ?? userData.model_max_budget,
-        object_permission: mcpEntitlement
-          ? { ...userData.object_permission, ...mcpEntitlement }
-          : userData.object_permission,
-      });
+      setUserData(await userGetInfoV2(accessToken, userId));
 
       toast.success(t("users.userInfo.toasts.updated"));
       setIsEditing(false);
@@ -449,7 +430,7 @@ export default function UserInfoView({
             </Button>
           </div>
         </div>
-        {userRole && rolesWithWriteAccess.includes(userRole) && (
+        {canEditUser && (
           <div className="flex items-center space-x-2">
             <Button variant="secondary" onClick={handleResetPassword} className="flex items-center">
               <RefreshCw />
@@ -593,7 +574,43 @@ export default function UserInfoView({
 
         {/* Details Panel */}
         <TabsContent value="details" keepMounted>
-          <span hidden aria-hidden="true" />
+          <section className="monitor-surface max-w-4xl space-y-4 p-4" aria-label={t("users.userInfo.details.title")}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-base font-semibold">{t("users.userInfo.details.title")}</h3>
+              {canEditUser && !isEditing && <Button size="sm" onClick={() => setIsEditing(true)}>{t("users.userInfo.details.editSettings")}</Button>}
+            </div>
+            {isEditing && canEditUser ? (
+              <UserEditView
+                userData={userDataForEdit}
+                onCancel={() => setIsEditing(false)}
+                onSubmit={handleUserUpdate}
+                teams={null}
+                accessToken={accessToken}
+                userID={userId}
+                userRole={userRole}
+                userModels={userModels}
+                possibleUIRoles={possibleUIRoles}
+                objectPermission={userData.object_permission}
+                premiumUser={premiumUser ?? false}
+                showModelBudgets={false}
+              />
+            ) : (
+              <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+                {[
+                  [t("users.userInfo.details.userId"), userData.user_id],
+                  [t("users.userInfo.details.userAlias"), userData.user_alias],
+                  [t("users.userInfo.details.email"), userData.user_email],
+                  [t("users.userInfo.details.globalProxyRole"), userRoleDisplayLabel(formatUserRole(userData.user_role ?? ""))],
+                  [t("users.editView.fields.tpmLimit"), userData.tpm_limit ?? unlimitedLabel],
+                  [t("users.editView.fields.rpmLimit"), userData.rpm_limit ?? unlimitedLabel],
+                  [t("users.userInfo.personalModels"), userData.models?.length ? userData.models.join("、") : t("users.userInfo.allProxyModels")],
+                  [t("users.userInfo.details.created"), userData.created_at ? new Date(userData.created_at).toLocaleString("zh-CN") : unknownTimestamp],
+                  [t("users.userInfo.details.lastUpdated"), userData.updated_at ? new Date(userData.updated_at).toLocaleString("zh-CN") : unknownTimestamp],
+                ].map(([label, value]) => <div key={label} className="min-w-0 space-y-1"><dt className="text-sm text-muted-foreground">{label}</dt><dd className="break-words text-sm">{value ?? t("users.userInfo.details.notSet")}</dd></div>)}
+                <div className="min-w-0 space-y-1 sm:col-span-2"><dt className="text-sm text-muted-foreground">{t("users.userInfo.details.metadata")}</dt><dd><pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-xs">{JSON.stringify(userData.metadata ?? {}, null, 2)}</pre></dd></div>
+              </dl>
+            )}
+          </section>
         </TabsContent>
         {canViewSavings && (
           <span hidden aria-hidden="true" />

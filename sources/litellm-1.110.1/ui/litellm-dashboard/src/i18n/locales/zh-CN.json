@@ -898,7 +898,7 @@
         "description": "此向量存储来自代理配置YAML,因此无法在仪表盘上编辑或删除。 更改或删除配置文件中的向量存储并重新启动代理 。"
       },
       "tabs": {
-        "details": "细节",
+        "details": "详情",
         "test": "测试矢量存储器"
       },
       "edit": {
@@ -2241,7 +2241,7 @@
       "backToKeys": "返回密钥",
       "user": {
         "label": "用户",
-        "alias": "用户别名",
+        "alias": "用户名称",
         "email": "用户电子邮件",
         "id": "用户名",
         "copyField": "复制{{label}}"
@@ -4850,7 +4850,7 @@
           "passed": "通过",
           "other": "其它",
           "outputText": "输出文本",
-          "details": "细节",
+          "details": "详情",
           "passedUnchanged": "未经修改通过。",
           "empty": "所选模板中没有可测试的安全规则 。"
         }
@@ -5692,7 +5692,7 @@
         "cancelled": "已取消",
         "unknown": "检查结果"
       },
-      "details": "细节",
+      "details": "详情",
       "copyGeneratedKey": "复制生成的密钥",
       "keyNotice": "现在复制此密钥。它只停留在本次聊天会话中 。",
       "cancel": "取消",
@@ -7863,7 +7863,7 @@
       "close": "关闭"
     },
     "masterDetail": {
-      "details": "细节"
+      "details": "详情"
     },
     "modelsPager": {
       "range": "{{start}}–{{end}}共{{total}}",
@@ -10043,7 +10043,7 @@
         "clickToCopy": "点击复制 :{{id}}",
         "copySessionId": "复制会话编号{{sessionId}}",
         "session": "会话 :{{id}}",
-        "details": "细节",
+        "details": "详情",
         "statusMessage": "状态消息 :",
         "taskId": "任务编号 :",
         "sessionId": "会话编号 :",
@@ -15011,7 +15011,7 @@
         "maxBudget": "最大预算 :",
         "before": "在此之前",
         "after": "之后",
-        "details": "细节",
+        "details": "详情",
         "table": "图表",
         "objectId": "对象标识",
         "copyObjectId": "复制对象标识",
@@ -20366,7 +20366,7 @@
       },
       "tabs": {
         "overview": "概览",
-        "details": "细节",
+        "details": "详情",
         "savings": "节余",
         "autoRouterUsage": "自动路由器使用"
       },

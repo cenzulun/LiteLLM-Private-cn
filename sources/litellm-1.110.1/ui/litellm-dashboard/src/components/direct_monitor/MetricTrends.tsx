@@ -17,12 +17,16 @@ function Trend({
   pending,
   error,
   color,
+  minutes,
+  endAt,
 }: {
   metric: Metric;
   points: [number, number | null][];
   pending: boolean;
   error: boolean;
   color: string;
+  minutes: number;
+  endAt: number;
 }) {
   const chart = points.map(([time, value]) => ({ time, value }));
   return (
@@ -53,8 +57,17 @@ function Trend({
                 <CartesianGrid vertical={false} stroke="var(--border)" />
                 <XAxis
                   dataKey="time"
+                  type="number"
+                  domain={[endAt - minutes * 60, endAt]}
+                  allowDataOverflow
+                  scale="time"
                   tickFormatter={(value) =>
-                    new Date(Number(value) * 1000).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })
+                    new Date(Number(value) * 1000).toLocaleString(
+                      "zh-CN",
+                      minutes >= 1440
+                        ? { month: "2-digit", day: "2-digit", hour: "2-digit" }
+                        : { hour: "2-digit", minute: "2-digit" },
+                    )
                   }
                   minTickGap={45}
                   tick={{ fontSize: 11 }}
@@ -110,6 +123,7 @@ export default function MetricTrends({
     setChosen(checked ? [...current, key] : current.filter((item) => item !== key));
   };
   const keys = selected.map((metric) => metric.key).join(",");
+  const [initialEnd] = useState(() => Math.floor(Date.now() / 1000));
   const history = useQuery({
     queryKey: ["direct-monitor-history-batch", accessToken, source.id, keys, minutes],
     enabled: Boolean(accessToken && keys),
@@ -121,6 +135,12 @@ export default function MetricTrends({
     refetchInterval: 30000,
     retry: 1,
   });
+  const timestamps = Object.values(history.data?.series ?? {}).flatMap((rows) =>
+    rows.filter((row) => row[1] != null).map((row) => row[0]),
+  );
+  const first = timestamps.length ? Math.min(...timestamps) : null;
+  const last = timestamps.length ? Math.max(...timestamps) : null;
+  const endAt = history.dataUpdatedAt ? Math.floor(history.dataUpdatedAt / 1000) : initialEnd;
   return (
     <section className="monitor-surface space-y-4 p-5" aria-label="趋势指标">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -204,6 +224,12 @@ export default function MetricTrends({
           </div>
         </details>
       </div>
+      {first !== null && last !== null && (
+        <p className="text-xs text-muted-foreground" role="status">
+          有效采样：{new Date(first * 1000).toLocaleString("zh-CN")} 至 {new Date(last * 1000).toLocaleString("zh-CN")}
+          。{first > endAt - minutes * 60 + 300 && "所选范围尚未积累完整历史，空白时段表示没有保留样本。"}
+        </p>
+      )}
       {selected.length ? (
         <div className="grid gap-x-6 gap-y-4 lg:grid-cols-2 2xl:grid-cols-3">
           {selected.map((metric, index) => (
@@ -214,6 +240,8 @@ export default function MetricTrends({
               pending={history.isPending}
               error={history.isError}
               color={palette[index % palette.length]}
+              minutes={minutes}
+              endAt={endAt}
             />
           ))}
         </div>

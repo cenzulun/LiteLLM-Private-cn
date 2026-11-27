@@ -238,7 +238,7 @@ export default function ReportSchedules(props: Props) {
               <label className="grid gap-2 text-sm">
                 定时报告生成要求
                 <Textarea
-                  maxLength={2000}
+                  maxLength={10000}
                   className="min-h-24"
                   value={draft.instructions}
                   onChange={(event) => setDraft({ ...draft, instructions: event.target.value })}

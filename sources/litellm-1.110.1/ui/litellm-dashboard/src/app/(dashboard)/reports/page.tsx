@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import ReportConversation from "@/components/reports/ReportConversation";
 import ReportSchedules from "@/components/reports/ReportSchedules";
+import ResizableReport from "@/components/reports/ResizableReport";
+import ReportActions from "@/components/reports/ReportActions";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { createApiClient } from "@/lib/http/client";
 import { getProxyBaseUrl } from "@/components/networking";
@@ -94,7 +96,7 @@ export default function ReportsPage() {
       !Number.isFinite(start) ||
       !Number.isFinite(end) ||
       end <= start ||
-      end > Date.now() / 1000 + 60 ||
+      end > Date.now() / 1000 + 300 ||
       end - start > 30 * 86400
     ) {
       setMessage("请选择不超过三十天且不晚于当前时间的有效范围。");
@@ -182,7 +184,7 @@ export default function ReportsPage() {
             报告生成要求
             <Textarea
               value={instructions}
-              maxLength={2000}
+              maxLength={10000}
               onChange={(event) => setInstructions(event.target.value)}
               placeholder="留空生成标准版。可填写重点模型、排队或延迟分析、图表与篇幅要求。"
             />
@@ -247,7 +249,7 @@ export default function ReportsPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-muted">
                 <tr>
-                  {["报告名称", "统计时间", "生成时间", "生成用户", "状态", "详情"].map((label) => (
+                  {["报告名称", "统计时间", "生成时间", "生成用户", "状态", "操作"].map((label) => (
                     <th className="whitespace-nowrap p-3 font-medium" key={label}>
                       {label}
                     </th>
@@ -281,10 +283,19 @@ export default function ReportsPage() {
                     <td className={`whitespace-nowrap p-3 ${statusTone(row.status)}`}>
                       {states[row.status] ?? "状态未知"}
                     </td>
-                    <td className="p-3">
+                    <td className="min-w-64 p-3">
                       <Button variant="ghost" size="sm" onClick={() => void setSelected(row.id)}>
                         详情
                       </Button>
+                      <ReportActions
+                        report={row}
+                        accessToken={accessToken}
+                        editable={editable}
+                        onModify={() => {
+                          setChatOpen(true);
+                          void setSelected(row.id);
+                        }}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -356,54 +367,51 @@ export default function ReportsPage() {
               </Button>
             </div>
           </SheetHeader>
-          <div
-            className={
-              chatOpen ? "grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]" : "flex min-h-0 flex-1"
-            }
-          >
-            <div
-              className={
-                chatOpen ? "hidden min-h-0 min-w-0 flex-1 flex-col lg:flex" : "flex min-h-0 min-w-0 flex-1 flex-col"
-              }
-            >
-              {(() => {
-                if (detail.isError)
+          <ResizableReport
+            open={chatOpen}
+            preview={
+              <>
+                {(() => {
+                  if (detail.isError)
+                    return (
+                      <p role="alert" className="p-4 text-destructive">
+                        报告读取失败，请重新打开。
+                      </p>
+                    );
+                  if (detail.data?.html && detail.data.status === "completed")
+                    return (
+                      <iframe
+                        className="min-h-0 w-full flex-1 border-0 bg-white"
+                        title="完整运行监控报告"
+                        sandbox=""
+                        referrerPolicy="no-referrer"
+                        srcDoc={detail.data.html}
+                      />
+                    );
                   return (
-                    <p role="alert" className="p-4 text-destructive">
-                      报告读取失败，请重新打开。
+                    <p className="p-4 text-sm text-muted-foreground">
+                      {detail.data?.error ||
+                        (detail.isPending ? "正在读取…" : "后台正在采集与分析指标，报告完成后自动显示。")}
                     </p>
                   );
-                if (detail.data?.html && detail.data.status === "completed")
-                  return (
-                    <iframe
-                      className="min-h-0 w-full flex-1 border-0 bg-white"
-                      title="完整运行监控报告"
-                      sandbox=""
-                      referrerPolicy="no-referrer"
-                      srcDoc={detail.data.html}
-                    />
-                  );
-                return (
-                  <p className="p-4 text-sm text-muted-foreground">
-                    {detail.data?.error ||
-                      (detail.isPending ? "正在读取…" : "后台正在采集与分析指标，报告完成后自动显示。")}
-                  </p>
-                );
-              })()}
-            </div>
-            {chatOpen && selected && detail.data && (
-              <ReportConversation
-                key={selected}
-                identifier={selected}
-                accessToken={accessToken}
-                model={detail.data.model}
-                models={models.data?.models ?? []}
-                ready={detail.data.status === "completed"}
-                editable={editable}
-                onRevision={(identifier) => void setSelected(identifier)}
-              />
-            )}
-          </div>
+                })()}
+              </>
+            }
+            conversation={
+              selected && detail.data ? (
+                <ReportConversation
+                  key={selected}
+                  identifier={selected}
+                  accessToken={accessToken}
+                  model={detail.data.model}
+                  models={models.data?.models ?? []}
+                  ready={["completed", "failed"].includes(detail.data.status)}
+                  editable={editable}
+                  onRevision={(identifier) => void setSelected(identifier)}
+                />
+              ) : null
+            }
+          />
         </SheetContent>
       </Sheet>
     </Page>

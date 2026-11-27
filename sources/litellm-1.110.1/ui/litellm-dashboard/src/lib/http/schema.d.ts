@@ -13646,10 +13646,12 @@ export interface paths {
         get: operations["detail_private_reports__identifier__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Delete */
+        delete: operations["delete_private_reports__identifier__delete"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Rename */
+        patch: operations["rename_private_reports__identifier__patch"];
         trace?: never;
     };
     "/private/reports/{identifier}/conversation": {
@@ -44733,6 +44735,11 @@ export interface components {
              */
             open: string;
         };
+        /** ReportNameRequest */
+        ReportNameRequest: {
+            /** Name */
+            name: string;
+        };
         /** ReportRequest */
         ReportRequest: {
             /** End At */
@@ -46825,7 +46832,10 @@ export interface components {
         };
         /** RevisionRequest */
         RevisionRequest: {
-            /** Instructions */
+            /**
+             * Instructions
+             * @default
+             */
             instructions: string;
             /** Model */
             model?: string | null;
@@ -74128,6 +74138,72 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_private_reports__identifier__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rename_private_reports__identifier__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportNameRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

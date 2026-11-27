@@ -36,6 +36,10 @@ class DirectStore:
                 id INTEGER PRIMARY KEY AUTOINCREMENT, source_id TEXT NOT NULL,
                 fingerprint TEXT NOT NULL, at REAL NOT NULL, metrics BLOB NOT NULL, raw BLOB);
             CREATE INDEX IF NOT EXISTS direct_sample_lookup ON direct_samples(source_id, at);
+            CREATE INDEX IF NOT EXISTS direct_sample_time ON direct_samples(at);
+            CREATE TABLE IF NOT EXISTS direct_maintenance (
+                id INTEGER PRIMARY KEY CHECK(id=1), pruned_at REAL NOT NULL DEFAULT 0);
+            INSERT OR IGNORE INTO direct_maintenance(id,pruned_at) VALUES(1,0);
         ''')
         try:
             with db:
@@ -75,8 +79,17 @@ class DirectStore:
                        (identifier, fingerprint, at, encode(derived), encode(raw)))
             db.execute("UPDATE direct_samples SET raw=NULL WHERE source_id=? AND at<? AND raw IS NOT NULL", (identifier, at - 600))
             db.execute("DELETE FROM direct_samples WHERE source_id=? AND at<?", (identifier, at - retention_days * 86400))
-            db.execute("DELETE FROM direct_samples WHERE at<?", (at - 30 * 86400,))
-            db.execute("DELETE FROM direct_samples WHERE id IN (SELECT id FROM direct_samples ORDER BY id DESC LIMIT -1 OFFSET 250000)")
+            # Coordinate global pruning across collectors, rather than scan the full
+            # seven-day archive after every individual source sample.
+            prune = db.execute('UPDATE direct_maintenance SET pruned_at=? WHERE id=1 AND pruned_at<?', (at, at - 60))
+            if prune.rowcount:
+                db.execute("DELETE FROM direct_samples WHERE at<?", (at - 30 * 86400,))
+                # Fourteen sources at ten-second intervals need 846,720 rows for seven days.
+                try:
+                    maximum = max(250000, min(10000000, int(os.getenv('DIRECT_MONITOR_MAX_SAMPLES', '2000000'))))
+                except ValueError:
+                    maximum = 2000000
+                db.execute("DELETE FROM direct_samples WHERE id IN (SELECT id FROM direct_samples ORDER BY id DESC LIMIT -1 OFFSET ?)", (maximum,))
 
     def fail(self, identifier, fingerprint, error):
         with self.db() as db:

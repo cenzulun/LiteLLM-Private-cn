@@ -30,6 +30,8 @@ services:
       REDIS_USERNAME: ${REDIS_USERNAME:-}
       REDIS_DB: ${REDIS_DB:-0}
       REDIS_SSL: ${REDIS_SSL:-false}
+      REPORT_MODEL_TIMEOUT_SECONDS: ${REPORT_MODEL_TIMEOUT_SECONDS:-300}
+      DIRECT_MONITOR_MAX_SAMPLES: ${DIRECT_MONITOR_MAX_SAMPLES:-2000000}
       PROMETHEUS_URL: ${PROMETHEUS_URL:-}
       REALAI_METRIC_ROUTING_ENABLED: ${REALAI_METRIC_ROUTING_ENABLED:-false}
       REALAI_ROUTING_METRIC_QUERY: ${REALAI_ROUTING_METRIC_QUERY:-sum(vllm:num_requests_waiting) by (model_name,instance) + sum(vllm:num_requests_running) by (model_name,instance)}

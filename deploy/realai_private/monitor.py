@@ -132,7 +132,7 @@ def monitor_router() -> APIRouter:
     router.include_router(configuration_router(), prefix="")
 
     @router.get("/private/monitor/history")
-    async def history(configuration: Configuration, key: str = Query(..., max_length=80), minutes: int = Query(60, ge=15, le=360), actor: UserAPIKeyAuth = Depends(user_api_key_auth)) -> dict[str, object]:
+    async def history(configuration: Configuration, key: str = Query(..., max_length=80), minutes: int = Query(60, ge=15, le=43200), actor: UserAPIKeyAuth = Depends(user_api_key_auth)) -> dict[str, object]:
         if not user_api_key_has_admin_view(actor):
             raise HTTPException(status_code=403, detail="只有平台管理员可以查看全局监控")
         metric = next((row for row in METRICS if row[0] == key), None)

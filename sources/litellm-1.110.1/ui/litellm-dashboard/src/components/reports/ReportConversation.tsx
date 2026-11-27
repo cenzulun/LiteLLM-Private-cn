@@ -42,7 +42,7 @@ export default function ReportConversation(props: Props) {
   });
   const chosen = props.models.includes(model) ? model : props.models[0] ?? "";
   const send = async () => {
-    if (!instructions.trim() || !chosen) return;
+    if (!chosen) return;
     setBusy(true);
     setError("");
     try {
@@ -123,7 +123,7 @@ export default function ReportConversation(props: Props) {
           调整要求
           <Textarea
             className="min-h-24 max-h-48 resize-y"
-            maxLength={2000}
+            maxLength={10000}
             value={instructions}
             onChange={(event) => setInstructions(event.target.value)}
             placeholder="例如：突出排队最多的实例，重点分析响应延迟，保留趋势图，文字简洁一些。"
@@ -134,13 +134,15 @@ export default function ReportConversation(props: Props) {
             {error}
           </p>
         )}
-        {!props.ready && <p className="text-xs text-muted-foreground">当前报告完成后可继续调整。</p>}
+        {!props.ready && (
+          <p className="text-xs text-muted-foreground">报告正在生成，请完成后再提交；可以先填写调整要求。</p>
+        )}
         <Button
           className="w-full"
-          disabled={!props.editable || !props.ready || busy || !chosen || !instructions.trim()}
+          disabled={!props.editable || !props.ready || busy || !chosen}
           onClick={() => void send()}
         >
-          {busy ? "正在提交…" : "发送并生成修订版"}
+          {busy ? "正在提交…" : "生成"}
         </Button>
       </div>
     </aside>
